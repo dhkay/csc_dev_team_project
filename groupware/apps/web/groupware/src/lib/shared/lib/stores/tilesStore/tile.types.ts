@@ -13,7 +13,8 @@ export type TileIconName =
   | 'settings'
   | 'logs'
   | 'billing'
-  | 'storage';
+  | 'storage'
+  | 'rbfr';
 
 interface TileBase {
   // 안정적 식별자: #each 키 및 removeTile 인자로 사용
@@ -48,8 +49,9 @@ export interface PlaceholderTile extends TileBase {
   iconName?: TileIconName;
   // 플레이스홀더 아이콘(이모지/이니셜): iconName 미지정 시 폴백
   icon?: string;
-  // 클릭 시 이동할 admin 하위 세그먼트(orgSlug 기준 상대): 예: 'users' → /{slug}/admin/users.
-  // 생략 시 비-내비게이션(정적 카드)
+  // 클릭 시 이동할 경로. '/'로 시작하면 orgSlug 바로 아래 절대경로로 조립되고
+  // (예: '/tools/rbfr' → /{slug}/tools/rbfr), 아니면 기존처럼 admin 하위 세그먼트로 조립된다
+  // (예: 'users' → /{slug}/admin/users). 생략 시 비-내비게이션(정적 카드)
   href?: string;
 }
 

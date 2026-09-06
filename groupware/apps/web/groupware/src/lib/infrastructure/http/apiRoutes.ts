@@ -123,4 +123,25 @@ export const ROUTES = {
 	API_CREDENTIALS: '/api/api-credentials',
 	// 조직 AI 어시스턴트 설정 BFF: 조회(GET)/수정(PATCH) 단일 라우트
 	ASSISTANT_SETTINGS: '/api/assistant-settings',
+	// RBFR(역할 기반 배합 비율) BFF: 처방 계산·검증 + 원료 등록
+	RBFR: {
+		calculateFormula: (formulaId: number, profileCode: string) =>
+			`/api/rbfr/formulas/${formulaId}/calculate?profileCode=${encodeURIComponent(profileCode)}`,
+		directDomains: (profileCode: string) =>
+			`/api/rbfr/profiles/${encodeURIComponent(profileCode)}/direct-domains`,
+		INGREDIENTS: '/api/rbfr/ingredients',
+		FORMULAS: '/api/rbfr/formulas',
+		RECOMMENDATIONS: '/api/rbfr/recommendations',
+		PROFILES: '/api/rbfr/profiles',
+		roleDomains: (profileCode: string) =>
+			`/api/rbfr/profiles/${encodeURIComponent(profileCode)}/role-domains`,
+		cellRuleLimits: (profileCode: string) =>
+			`/api/rbfr/profiles/${encodeURIComponent(profileCode)}/cell-rule-limits`,
+		approveCellRuleLimit: (ruleVersion: string) =>
+			`/api/rbfr/cell-rule-limits/${encodeURIComponent(ruleVersion)}/approve`,
+		setProfileActive: (profileCode: string) =>
+			`/api/rbfr/profiles/${encodeURIComponent(profileCode)}/active`,
+		cellMapping: (ruleVersion: string) =>
+			`/api/rbfr/cell-rule-limits/${encodeURIComponent(ruleVersion)}/mapping`,
+	},
 } as const;

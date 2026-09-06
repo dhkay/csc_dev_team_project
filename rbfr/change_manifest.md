@@ -7,48 +7,44 @@
 
 ## 변경 요약
 - 작업 날짜: 2026-09-06
-- 작업 단계: (로드맵 단계 아님) Git/GitHub 초기 설정
-- 작업 목적: 사용자가 요청한 "매 단계 완료마다 자동 커밋+푸시" 시스템의 기반을 만든다. 이
-  머신에 git 사용자 정보와 `gh` CLI가 전혀 없어 로컬 저장소 초기화까지만 이번에 완료하고,
-  GitHub 원격 연결은 사용자의 `gh auth login` 완료 후 이어간다.
+- 작업 단계: 6번째 등록 지점 — 사이드바(관리자 대시보드 타일) 메뉴 등록
+- 작업 목적: RBFR 화면 4개가 전부 완성됐으니 URL 직접 입력 없이 클릭으로 들어갈 수 있게 한다.
+  조사 결과 "FeatureKey 게이팅 사이드바"라는 완결된 등록 지점이 그룹웨어에 없어(RBFR이 그
+  방식의 첫 사례), 사용자 승인을 받아 기존 관리자 대시보드 타일을 임시로 재사용했다.
 
-## 생성한 파일
-- 경로: `/var/www/rbfr/.gitignore`
-  - 목적: OS/도구 잡파일(`*Zone.Identifier` 등, OneDrive 다운로드 파일에 흔함), `node_modules/`,
-    `*.log` 제외.
-  - 적용 필요 여부: 저장소 자체의 설정 파일이라 그대로 커밋됨(이미 완료).
+## 생성한 파일 (groupware 저장소, 프론트)
+- `static/assets/icon/dashboard/rbfr.svg`
 
-## 수정한 파일
-- 경로: `/var/www/rbfr/develop_status.md`
-  - 수정 내용: "Git / GitHub" 절 신규 추가 — 로컬 저장소 초기화 완료(커밋 `66d2a46`), 임시
-    git 계정(`kimja`/`kimjangsuk@gmail.com`) 설정 사실, GitHub 저장소는 아직 없고 사용자가
-    `gh` 설치 + 로그인을 직접 해야 다음 단계로 넘어갈 수 있다는 안내, 자동 업로드 정책(매
-    단계 완료마다 파일 목록 표시 후 자동 커밋+푸시) 확정 기록, 공개범위 Private 확정.
-  - 수정 이유: 사용자가 자동 GitHub 업로드 시스템을 요청했고, 그 전제(git/gh 설치 상태)를
-    확인해보니 아무것도 없어서 그 현황과 다음 필요 조치를 기록.
-  - 영향 범위: 다음 세션(또는 사용자가 로그인 완료를 알려온 뒤)이 이 절을 보고 원격 저장소
-    생성 + 첫 푸시로 이어간다.
-  - 적용 필요 여부: 프로젝트 상태 파일, 그 자체가 이미 git 저장소 안에 있다.
+## 수정한 파일 (groupware 저장소, 프론트)
+- `lib/shared/lib/stores/tilesStore/tile.types.ts` — `TileIconName`에 `'rbfr'` 추가,
+  `href` 필드 의미 확장(`/`로 시작하면 orgSlug 바로 아래 절대경로, 기존 상대경로 동작은
+  하위 호환 유지).
+- `lib/shared/lib/stores/tilesStore/tilesStore.svelte.ts` — RBFR 타일 1개 추가
+  (`requireOrgManage: true`, `href: '/tools/rbfr'`).
+- `lib/pages/admin/dashboard/components/Tile.svelte` — href 조립 로직을 절대경로(`/`로
+  시작)도 지원하도록 확장(기존 타일 동작 무변경), `TILE_TINT`에 `rbfr` 색상 추가.
 
-## 실행한 시스템 변경 (파일이 아니지만 기록)
-- WSL(Ubuntu-24.04) 전역 git 설정: `user.name=kimja`, `user.email=kimjangsuk@gmail.com`,
-  `init.defaultBranch=main`. 사용자가 원하면 언제든 변경 가능.
-- `/var/www/rbfr`에 `git init` 실행, 전체 파일 스테이징 후 최초 커밋(`66d2a46`) 생성.
-- `gh` CLI 설치 시도(WSL apt) — `sudo` 비밀번호가 필요해 실패, 사용자에게 직접 실행 요청함.
+## 검증
+- `npx svelte-check`(apps/web/groupware): 새 코드 에러 0건, 기존 무관 에러 9건 그대로
+  (회귀 없음).
 
-## 추가한 폴더
-- 없음(기존 폴더 구조 그대로, 저장소 메타데이터(`.git/`)만 새로 생김).
+## 의도적 한계 (다음에 "제대로" 만들 때 참고)
+- **FeatureKey 검증 없이 "조직 관리 가능자"에게만 노출하는 임시 게이트다.** 진짜 인가는
+  아니고 UX 가시성 제어일 뿐이다.
+- URL 직접 접근 차단(서버 가드)이 아직 없다 — `routes/[orgSlug]/tools/rbfr/**` 밑에
+  `+page.server.ts`가 하나도 없다.
+- `CurrentUser` 타입에 `features` 필드 자체가 없어 FeatureKey 클레임이 프론트엔드로 아예
+  안 내려온다. 나중에 제대로 만들려면 이 배선(타입 추가 + `+layout.server.ts` 등 수정) +
+  진짜 main GNB 신설이 필요하다 — 이건 RBFR 전용이 아니라 그룹웨어 공용 인증 계층을 건드리는
+  작업이라 다른 개발자와 조율이 특히 필요하다.
 
 ## 변경하지 않은 주요 항목
-- `개발지침/*`, `engine/*`, `test/*`: 이번 작업은 인프라(git/GitHub) 설정이라 프로젝트 내용
-  파일은 건드리지 않았다(전부 그대로 첫 커밋에 포함됨).
+- `domains/api-credential/*` 등 기존 무관 에러: 여전히 손대지 않음(사용자 지시).
+- MFDS 실제 네트워크 연결/프론트 연동: 여전히 보류.
 
 ## 업데이트 대상 목록
-- (해당 없음 — 이번 작업은 그룹웨어 저장소와 무관하다.)
+- (해당 없음 — groupware 저장소 안에 직접 생성/수정.)
 
 ## 업데이트 제외 목록
-- `/var/www/rbfr/test/*`, `/var/www/rbfr/05_참고자료/*`: 여전히 목업/참고자료, 반영 대상
-  아님(다만 이번 첫 커밋에는 저장소 이력 보존 목적으로 포함됨 — "그룹웨어로의 반영 대상"과
-  "git 저장소에 커밋할 대상"은 다른 개념이다).
-- `C:\Users\kimja\OneDrive\Desktop\RBFR 프로그램\`: 읽기 전용 원본 스펙, 이 저장소 밖에 있고
-  커밋 대상도 아니다.
+- `/var/www/rbfr/engine/*`: 참고용 이력.
+- `/var/www/rbfr/test/*`, `/var/www/test_mall/*`, `/var/www/_archive/*`: 이번 작업과 무관.

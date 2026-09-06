@@ -1,0 +1,3370 @@
+{
+  "id": "afbfd48f-af89-450e-a8e9-fbfcf0df1bb9",
+  "prevId": "0449c1ae-aa9f-407d-96ec-1391698a08f9",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.organization_api_credentials": {
+      "name": "organization_api_credentials",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "credentials": {
+          "name": "credentials",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "organization_api_credentials_org_idx": {
+          "name": "organization_api_credentials_org_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "organization_api_credentials_org_provider_uq": {
+          "name": "organization_api_credentials_org_provider_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "provider"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.organization_assistant_settings": {
+      "name": "organization_assistant_settings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_model": {
+          "name": "default_model",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prompt_addition": {
+          "name": "prompt_addition",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "organization_assistant_settings_org_uq": {
+          "name": "organization_assistant_settings_org_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_cell_mapping": {
+      "name": "rbfr_cell_mapping",
+      "schema": "",
+      "columns": {
+        "rule_version": {
+          "name": "rule_version",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ratio_from": {
+          "name": "ratio_from",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ratio_to": {
+          "name": "ratio_to",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cell_count": {
+          "name": "cell_count",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "rbfr_cell_mapping_rule_version_ratio_from_pk": {
+          "name": "rbfr_cell_mapping_rule_version_ratio_from_pk",
+          "columns": [
+            "rule_version",
+            "ratio_from"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_cell_rule_limits": {
+      "name": "rbfr_cell_rule_limits",
+      "schema": "",
+      "columns": {
+        "rule_version": {
+          "name": "rule_version",
+          "type": "varchar(16)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "profile_code": {
+          "name": "profile_code",
+          "type": "varchar(24)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_min": {
+          "name": "total_min",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 15
+        },
+        "total_max": {
+          "name": "total_max",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 18
+        },
+        "fill_direction": {
+          "name": "fill_direction",
+          "type": "rbfr_fill_direction_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'CCW'"
+        },
+        "start_cell": {
+          "name": "start_cell",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "is_approved": {
+          "name": "is_approved",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "approved_by": {
+          "name": "approved_by",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "note": {
+          "name": "note",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_cell_rule_limits_profile_code_rbfr_profiles_profile_code_fk": {
+          "name": "rbfr_cell_rule_limits_profile_code_rbfr_profiles_profile_code_fk",
+          "tableFrom": "rbfr_cell_rule_limits",
+          "tableTo": "rbfr_profiles",
+          "columnsFrom": [
+            "profile_code"
+          ],
+          "columnsTo": [
+            "profile_code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_code_items": {
+      "name": "rbfr_code_items",
+      "schema": "",
+      "columns": {
+        "code_type": {
+          "name": "code_type",
+          "type": "varchar(24)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_ko": {
+          "name": "name_ko",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descr": {
+          "name": "descr",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "rbfr_code_items_code_type_code_pk": {
+          "name": "rbfr_code_items_code_type_code_pk",
+          "columns": [
+            "code_type",
+            "code"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_countries": {
+      "name": "rbfr_countries",
+      "schema": "",
+      "columns": {
+        "country_code": {
+          "name": "country_code",
+          "type": "varchar(8)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name_ko": {
+          "name": "name_ko",
+          "type": "varchar(48)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_profiles": {
+      "name": "rbfr_profiles",
+      "schema": "",
+      "columns": {
+        "profile_code": {
+          "name": "profile_code",
+          "type": "varchar(24)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name_ko": {
+          "name": "name_ko",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "varchar(48)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_type": {
+          "name": "profile_type",
+          "type": "rbfr_profile_type_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "description": {
+          "name": "description",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_role_domains": {
+      "name": "rbfr_role_domains",
+      "schema": "",
+      "columns": {
+        "domain_code": {
+          "name": "domain_code",
+          "type": "varchar(24)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "profile_code": {
+          "name": "profile_code",
+          "type": "varchar(24)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_ko": {
+          "name": "name_ko",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "domain_type": {
+          "name": "domain_type",
+          "type": "rbfr_domain_type_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_role_domains_profile_code_rbfr_profiles_profile_code_fk": {
+          "name": "rbfr_role_domains_profile_code_rbfr_profiles_profile_code_fk",
+          "tableFrom": "rbfr_role_domains",
+          "tableTo": "rbfr_profiles",
+          "columnsFrom": [
+            "profile_code"
+          ],
+          "columnsTo": [
+            "profile_code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "rbfr_role_domains_profile_sort_uq": {
+          "name": "rbfr_role_domains_profile_sort_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "profile_code",
+            "sort_order"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_user_roles": {
+      "name": "rbfr_user_roles",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role_code": {
+          "name": "role_code",
+          "type": "rbfr_user_role_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "granted_at": {
+          "name": "granted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "granted_by": {
+          "name": "granted_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "rbfr_user_roles_user_id_role_code_pk": {
+          "name": "rbfr_user_roles_user_id_role_code_pk",
+          "columns": [
+            "user_id",
+            "role_code"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_ingredient_cas": {
+      "name": "rbfr_ingredient_cas",
+      "schema": "",
+      "columns": {
+        "ingredient_id": {
+          "name": "ingredient_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cas_no": {
+          "name": "cas_no",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "rbfr_ingredient_cas_cas_idx": {
+          "name": "rbfr_ingredient_cas_cas_idx",
+          "columns": [
+            {
+              "expression": "cas_no",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "rbfr_ingredient_cas_ingredient_id_rbfr_ingredients_id_fk": {
+          "name": "rbfr_ingredient_cas_ingredient_id_rbfr_ingredients_id_fk",
+          "tableFrom": "rbfr_ingredient_cas",
+          "tableTo": "rbfr_ingredients",
+          "columnsFrom": [
+            "ingredient_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "rbfr_ingredient_cas_ingredient_id_cas_no_pk": {
+          "name": "rbfr_ingredient_cas_ingredient_id_cas_no_pk",
+          "columns": [
+            "ingredient_id",
+            "cas_no"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_ingredient_certs": {
+      "name": "rbfr_ingredient_certs",
+      "schema": "",
+      "columns": {
+        "ingredient_id": {
+          "name": "ingredient_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cert_code": {
+          "name": "cert_code",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_eligible": {
+          "name": "is_eligible",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issuer": {
+          "name": "issuer",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cert_no": {
+          "name": "cert_no",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "doc_url": {
+          "name": "doc_url",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "valid_until": {
+          "name": "valid_until",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "checked_at": {
+          "name": "checked_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "note": {
+          "name": "note",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "rbfr_ingredient_certs_valid_idx": {
+          "name": "rbfr_ingredient_certs_valid_idx",
+          "columns": [
+            {
+              "expression": "valid_until",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "rbfr_ingredient_certs_ingredient_id_rbfr_ingredients_id_fk": {
+          "name": "rbfr_ingredient_certs_ingredient_id_rbfr_ingredients_id_fk",
+          "tableFrom": "rbfr_ingredient_certs",
+          "tableTo": "rbfr_ingredients",
+          "columnsFrom": [
+            "ingredient_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "rbfr_ingredient_certs_ingredient_id_cert_code_pk": {
+          "name": "rbfr_ingredient_certs_ingredient_id_cert_code_pk",
+          "columns": [
+            "ingredient_id",
+            "cert_code"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_ingredient_dictionary": {
+      "name": "rbfr_ingredient_dictionary",
+      "schema": "",
+      "columns": {
+        "dict_id": {
+          "name": "dict_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name_ko": {
+          "name": "name_ko",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cas_no": {
+          "name": "cas_no",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "origin_desc": {
+          "name": "origin_desc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "synonym": {
+          "name": "synonym",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "synced_at": {
+          "name": "synced_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "rbfr_ingredient_dictionary_name_en_idx": {
+          "name": "rbfr_ingredient_dictionary_name_en_idx",
+          "columns": [
+            {
+              "expression": "name_en",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "rbfr_ingredient_dictionary_name_ko_unique": {
+          "name": "rbfr_ingredient_dictionary_name_ko_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "name_ko"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_ingredient_flags": {
+      "name": "rbfr_ingredient_flags",
+      "schema": "",
+      "columns": {
+        "ingredient_id": {
+          "name": "ingredient_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "noadd_code": {
+          "name": "noadd_code",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_ingredient_flags_ingredient_id_rbfr_ingredients_id_fk": {
+          "name": "rbfr_ingredient_flags_ingredient_id_rbfr_ingredients_id_fk",
+          "tableFrom": "rbfr_ingredient_flags",
+          "tableTo": "rbfr_ingredients",
+          "columnsFrom": [
+            "ingredient_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "rbfr_ingredient_flags_ingredient_id_noadd_code_pk": {
+          "name": "rbfr_ingredient_flags_ingredient_id_noadd_code_pk",
+          "columns": [
+            "ingredient_id",
+            "noadd_code"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_ingredient_history": {
+      "name": "rbfr_ingredient_history",
+      "schema": "",
+      "columns": {
+        "history_id": {
+          "name": "history_id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "ingredient_id": {
+          "name": "ingredient_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "field_name": {
+          "name": "field_name",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "old_value": {
+          "name": "old_value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "new_value": {
+          "name": "new_value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "changed_by": {
+          "name": "changed_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "changed_at": {
+          "name": "changed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "rbfr_ingredient_history_ing_changed_idx": {
+          "name": "rbfr_ingredient_history_ing_changed_idx",
+          "columns": [
+            {
+              "expression": "ingredient_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "changed_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_ingredient_incompat": {
+      "name": "rbfr_ingredient_incompat",
+      "schema": "",
+      "columns": {
+        "ingredient_id": {
+          "name": "ingredient_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "other_id": {
+          "name": "other_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "severity": {
+          "name": "severity",
+          "type": "rbfr_incompat_severity_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'WARN'"
+        },
+        "reason": {
+          "name": "reason",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_ingredient_incompat_ingredient_id_rbfr_ingredients_id_fk": {
+          "name": "rbfr_ingredient_incompat_ingredient_id_rbfr_ingredients_id_fk",
+          "tableFrom": "rbfr_ingredient_incompat",
+          "tableTo": "rbfr_ingredients",
+          "columnsFrom": [
+            "ingredient_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "rbfr_ingredient_incompat_other_id_rbfr_ingredients_id_fk": {
+          "name": "rbfr_ingredient_incompat_other_id_rbfr_ingredients_id_fk",
+          "tableFrom": "rbfr_ingredient_incompat",
+          "tableTo": "rbfr_ingredients",
+          "columnsFrom": [
+            "other_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "rbfr_ingredient_incompat_ingredient_id_other_id_pk": {
+          "name": "rbfr_ingredient_incompat_ingredient_id_other_id_pk",
+          "columns": [
+            "ingredient_id",
+            "other_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_ingredient_interactions": {
+      "name": "rbfr_ingredient_interactions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "ingredient_a_id": {
+          "name": "ingredient_a_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ingredient_b_id": {
+          "name": "ingredient_b_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "domain_code": {
+          "name": "domain_code",
+          "type": "varchar(24)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interaction_type": {
+          "name": "interaction_type",
+          "type": "rbfr_interaction_type_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "coefficient": {
+          "name": "coefficient",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'1.00'"
+        },
+        "confidence_level": {
+          "name": "confidence_level",
+          "type": "rbfr_confidence_level_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_source": {
+          "name": "data_source",
+          "type": "rbfr_data_source_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'unknown'"
+        },
+        "measured_at": {
+          "name": "measured_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_ingredient_interactions_ingredient_a_id_rbfr_ingredients_id_fk": {
+          "name": "rbfr_ingredient_interactions_ingredient_a_id_rbfr_ingredients_id_fk",
+          "tableFrom": "rbfr_ingredient_interactions",
+          "tableTo": "rbfr_ingredients",
+          "columnsFrom": [
+            "ingredient_a_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "rbfr_ingredient_interactions_ingredient_b_id_rbfr_ingredients_id_fk": {
+          "name": "rbfr_ingredient_interactions_ingredient_b_id_rbfr_ingredients_id_fk",
+          "tableFrom": "rbfr_ingredient_interactions",
+          "tableTo": "rbfr_ingredients",
+          "columnsFrom": [
+            "ingredient_b_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "rbfr_ingredient_interactions_domain_code_rbfr_role_domains_domain_code_fk": {
+          "name": "rbfr_ingredient_interactions_domain_code_rbfr_role_domains_domain_code_fk",
+          "tableFrom": "rbfr_ingredient_interactions",
+          "tableTo": "rbfr_role_domains",
+          "columnsFrom": [
+            "domain_code"
+          ],
+          "columnsTo": [
+            "domain_code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "rbfr_ingredient_interactions_pair_domain_uq": {
+          "name": "rbfr_ingredient_interactions_pair_domain_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "ingredient_a_id",
+            "ingredient_b_id",
+            "domain_code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_ingredient_prices": {
+      "name": "rbfr_ingredient_prices",
+      "schema": "",
+      "columns": {
+        "price_id": {
+          "name": "price_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "ingredient_id": {
+          "name": "ingredient_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit_price": {
+          "name": "unit_price",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "varchar(8)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'KRW'"
+        },
+        "price_unit": {
+          "name": "price_unit",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'KG'"
+        },
+        "trade_name": {
+          "name": "trade_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_high_cost": {
+          "name": "is_high_cost",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "base_date": {
+          "name": "base_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "supplier": {
+          "name": "supplier",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "rbfr_ingredient_prices_ing_base_date_idx": {
+          "name": "rbfr_ingredient_prices_ing_base_date_idx",
+          "columns": [
+            {
+              "expression": "ingredient_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "base_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "rbfr_ingredient_prices_ingredient_id_rbfr_ingredients_id_fk": {
+          "name": "rbfr_ingredient_prices_ingredient_id_rbfr_ingredients_id_fk",
+          "tableFrom": "rbfr_ingredient_prices",
+          "tableTo": "rbfr_ingredients",
+          "columnsFrom": [
+            "ingredient_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_ingredient_purposes": {
+      "name": "rbfr_ingredient_purposes",
+      "schema": "",
+      "columns": {
+        "ingredient_id": {
+          "name": "ingredient_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "purpose_code": {
+          "name": "purpose_code",
+          "type": "varchar(48)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_ingredient_purposes_ingredient_id_rbfr_ingredients_id_fk": {
+          "name": "rbfr_ingredient_purposes_ingredient_id_rbfr_ingredients_id_fk",
+          "tableFrom": "rbfr_ingredient_purposes",
+          "tableTo": "rbfr_ingredients",
+          "columnsFrom": [
+            "ingredient_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "rbfr_ingredient_purposes_ingredient_id_purpose_code_pk": {
+          "name": "rbfr_ingredient_purposes_ingredient_id_purpose_code_pk",
+          "columns": [
+            "ingredient_id",
+            "purpose_code"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_ingredient_regulations": {
+      "name": "rbfr_ingredient_regulations",
+      "schema": "",
+      "columns": {
+        "reg_id": {
+          "name": "reg_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "ingredient_id": {
+          "name": "ingredient_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "country_code": {
+          "name": "country_code",
+          "type": "varchar(8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reg_type": {
+          "name": "reg_type",
+          "type": "rbfr_reg_type_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "limit_pct": {
+          "name": "limit_pct",
+          "type": "numeric(7, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "condition_txt": {
+          "name": "condition_txt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_url": {
+          "name": "source_url",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "checked_at": {
+          "name": "checked_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ai_checked_at": {
+          "name": "ai_checked_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "rbfr_confirm_status_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'CONFIRMED'"
+        },
+        "found_by": {
+          "name": "found_by",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_by": {
+          "name": "reviewed_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_at": {
+          "name": "reviewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "note": {
+          "name": "note",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "rbfr_ingredient_regulations_status_idx": {
+          "name": "rbfr_ingredient_regulations_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "checked_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "rbfr_ingredient_regulations_ingredient_id_rbfr_ingredients_id_fk": {
+          "name": "rbfr_ingredient_regulations_ingredient_id_rbfr_ingredients_id_fk",
+          "tableFrom": "rbfr_ingredient_regulations",
+          "tableTo": "rbfr_ingredients",
+          "columnsFrom": [
+            "ingredient_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "rbfr_ingredient_regulations_uq": {
+          "name": "rbfr_ingredient_regulations_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "ingredient_id",
+            "country_code",
+            "status"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_ingredient_role_evidence_files": {
+      "name": "rbfr_ingredient_role_evidence_files",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "ingredient_id": {
+          "name": "ingredient_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "domain_code": {
+          "name": "domain_code",
+          "type": "varchar(24)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "upload_id": {
+          "name": "upload_id",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_name": {
+          "name": "file_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "uploaded_by": {
+          "name": "uploaded_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "uploaded_at": {
+          "name": "uploaded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_ingredient_roles": {
+      "name": "rbfr_ingredient_roles",
+      "schema": "",
+      "columns": {
+        "ingredient_id": {
+          "name": "ingredient_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "domain_code": {
+          "name": "domain_code",
+          "type": "varchar(24)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contribution": {
+          "name": "contribution",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence": {
+          "name": "evidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_ingredient_roles_ingredient_id_rbfr_ingredients_id_fk": {
+          "name": "rbfr_ingredient_roles_ingredient_id_rbfr_ingredients_id_fk",
+          "tableFrom": "rbfr_ingredient_roles",
+          "tableTo": "rbfr_ingredients",
+          "columnsFrom": [
+            "ingredient_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "rbfr_ingredient_roles_domain_code_rbfr_role_domains_domain_code_fk": {
+          "name": "rbfr_ingredient_roles_domain_code_rbfr_role_domains_domain_code_fk",
+          "tableFrom": "rbfr_ingredient_roles",
+          "tableTo": "rbfr_role_domains",
+          "columnsFrom": [
+            "domain_code"
+          ],
+          "columnsTo": [
+            "domain_code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "rbfr_ingredient_roles_ingredient_id_domain_code_pk": {
+          "name": "rbfr_ingredient_roles_ingredient_id_domain_code_pk",
+          "columns": [
+            "ingredient_id",
+            "domain_code"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_ingredient_textures": {
+      "name": "rbfr_ingredient_textures",
+      "schema": "",
+      "columns": {
+        "ingredient_id": {
+          "name": "ingredient_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "texture_code": {
+          "name": "texture_code",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "score": {
+          "name": "score",
+          "type": "numeric(4, 3)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_ingredient_textures_ingredient_id_rbfr_ingredients_id_fk": {
+          "name": "rbfr_ingredient_textures_ingredient_id_rbfr_ingredients_id_fk",
+          "tableFrom": "rbfr_ingredient_textures",
+          "tableTo": "rbfr_ingredients",
+          "columnsFrom": [
+            "ingredient_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "rbfr_ingredient_textures_ingredient_id_texture_code_pk": {
+          "name": "rbfr_ingredient_textures_ingredient_id_texture_code_pk",
+          "columns": [
+            "ingredient_id",
+            "texture_code"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_ingredient_tox": {
+      "name": "rbfr_ingredient_tox",
+      "schema": "",
+      "columns": {
+        "ingredient_id": {
+          "name": "ingredient_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "indicator": {
+          "name": "indicator",
+          "type": "varchar(48)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "rbfr_tox_status_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "checked_at": {
+          "name": "checked_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_ingredient_tox_ingredient_id_rbfr_ingredients_id_fk": {
+          "name": "rbfr_ingredient_tox_ingredient_id_rbfr_ingredients_id_fk",
+          "tableFrom": "rbfr_ingredient_tox",
+          "tableTo": "rbfr_ingredients",
+          "columnsFrom": [
+            "ingredient_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "rbfr_ingredient_tox_ingredient_id_indicator_pk": {
+          "name": "rbfr_ingredient_tox_ingredient_id_indicator_pk",
+          "columns": [
+            "ingredient_id",
+            "indicator"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_ingredients": {
+      "name": "rbfr_ingredients",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "inci_name": {
+          "name": "inci_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_ko": {
+          "name": "name_ko",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ec_no": {
+          "name": "ec_no",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "func_desc": {
+          "name": "func_desc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "origin_desc": {
+          "name": "origin_desc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "synonym": {
+          "name": "synonym",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(48)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ewg_grade": {
+          "name": "ewg_grade",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "conc_min": {
+          "name": "conc_min",
+          "type": "numeric(7, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "conc_max": {
+          "name": "conc_max",
+          "type": "numeric(7, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "solubility": {
+          "name": "solubility",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ph_min": {
+          "name": "ph_min",
+          "type": "numeric(4, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ph_max": {
+          "name": "ph_max",
+          "type": "numeric(4, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hlb": {
+          "name": "hlb",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sg_min": {
+          "name": "sg_min",
+          "type": "numeric(6, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sg_max": {
+          "name": "sg_max",
+          "type": "numeric(6, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visc_type": {
+          "name": "visc_type",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visc_coef": {
+          "name": "visc_coef",
+          "type": "numeric(8, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "emulsion_role": {
+          "name": "emulsion_role",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stability_note": {
+          "name": "stability_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "blend_cond": {
+          "name": "blend_cond",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "caution": {
+          "name": "caution",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_base": {
+          "name": "is_base",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "rbfr_ingredients_inci_name_unique": {
+          "name": "rbfr_ingredients_inci_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "inci_name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_formula_condition_codes": {
+      "name": "rbfr_formula_condition_codes",
+      "schema": "",
+      "columns": {
+        "formula_id": {
+          "name": "formula_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code_type": {
+          "name": "code_type",
+          "type": "varchar(24)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_formula_condition_codes_formula_id_rbfr_formulas_formula_id_fk": {
+          "name": "rbfr_formula_condition_codes_formula_id_rbfr_formulas_formula_id_fk",
+          "tableFrom": "rbfr_formula_condition_codes",
+          "tableTo": "rbfr_formulas",
+          "columnsFrom": [
+            "formula_id"
+          ],
+          "columnsTo": [
+            "formula_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "rbfr_formula_condition_codes_formula_id_code_type_code_pk": {
+          "name": "rbfr_formula_condition_codes_formula_id_code_type_code_pk",
+          "columns": [
+            "formula_id",
+            "code_type",
+            "code"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_formula_conditions": {
+      "name": "rbfr_formula_conditions",
+      "schema": "",
+      "columns": {
+        "formula_id": {
+          "name": "formula_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "target_code": {
+          "name": "target_code",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "batch_size": {
+          "name": "batch_size",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'100'"
+        },
+        "target_price": {
+          "name": "target_price",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target_ph_min": {
+          "name": "target_ph_min",
+          "type": "numeric(4, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target_ph_max": {
+          "name": "target_ph_max",
+          "type": "numeric(4, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "extra_note": {
+          "name": "extra_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_formula_conditions_formula_id_rbfr_formulas_formula_id_fk": {
+          "name": "rbfr_formula_conditions_formula_id_rbfr_formulas_formula_id_fk",
+          "tableFrom": "rbfr_formula_conditions",
+          "tableTo": "rbfr_formulas",
+          "columnsFrom": [
+            "formula_id"
+          ],
+          "columnsTo": [
+            "formula_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_formula_countries": {
+      "name": "rbfr_formula_countries",
+      "schema": "",
+      "columns": {
+        "formula_id": {
+          "name": "formula_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "country_code": {
+          "name": "country_code",
+          "type": "varchar(8)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_formula_countries_formula_id_rbfr_formulas_formula_id_fk": {
+          "name": "rbfr_formula_countries_formula_id_rbfr_formulas_formula_id_fk",
+          "tableFrom": "rbfr_formula_countries",
+          "tableTo": "rbfr_formulas",
+          "columnsFrom": [
+            "formula_id"
+          ],
+          "columnsTo": [
+            "formula_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "rbfr_formula_countries_formula_id_country_code_pk": {
+          "name": "rbfr_formula_countries_formula_id_country_code_pk",
+          "columns": [
+            "formula_id",
+            "country_code"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_formula_ingredients": {
+      "name": "rbfr_formula_ingredients",
+      "schema": "",
+      "columns": {
+        "formula_id": {
+          "name": "formula_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ingredient_id": {
+          "name": "ingredient_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phase": {
+          "name": "phase",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actual_pct": {
+          "name": "actual_pct",
+          "type": "numeric(7, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_recommended": {
+          "name": "is_recommended",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_pinned": {
+          "name": "is_pinned",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "pinned_pct": {
+          "name": "pinned_pct",
+          "type": "numeric(7, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_formula_ingredients_formula_id_rbfr_formulas_formula_id_fk": {
+          "name": "rbfr_formula_ingredients_formula_id_rbfr_formulas_formula_id_fk",
+          "tableFrom": "rbfr_formula_ingredients",
+          "tableTo": "rbfr_formulas",
+          "columnsFrom": [
+            "formula_id"
+          ],
+          "columnsTo": [
+            "formula_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "rbfr_formula_ingredients_ingredient_id_rbfr_ingredients_id_fk": {
+          "name": "rbfr_formula_ingredients_ingredient_id_rbfr_ingredients_id_fk",
+          "tableFrom": "rbfr_formula_ingredients",
+          "tableTo": "rbfr_ingredients",
+          "columnsFrom": [
+            "ingredient_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "rbfr_formula_ingredients_formula_id_ingredient_id_pk": {
+          "name": "rbfr_formula_ingredients_formula_id_ingredient_id_pk",
+          "columns": [
+            "formula_id",
+            "ingredient_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_formula_ratios": {
+      "name": "rbfr_formula_ratios",
+      "schema": "",
+      "columns": {
+        "formula_id": {
+          "name": "formula_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "domain_code": {
+          "name": "domain_code",
+          "type": "varchar(24)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_ratio": {
+          "name": "target_ratio",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_main": {
+          "name": "is_main",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "cell_count": {
+          "name": "cell_count",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evidence": {
+          "name": "evidence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_formula_ratios_formula_id_rbfr_formulas_formula_id_fk": {
+          "name": "rbfr_formula_ratios_formula_id_rbfr_formulas_formula_id_fk",
+          "tableFrom": "rbfr_formula_ratios",
+          "tableTo": "rbfr_formulas",
+          "columnsFrom": [
+            "formula_id"
+          ],
+          "columnsTo": [
+            "formula_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "rbfr_formula_ratios_domain_code_rbfr_role_domains_domain_code_fk": {
+          "name": "rbfr_formula_ratios_domain_code_rbfr_role_domains_domain_code_fk",
+          "tableFrom": "rbfr_formula_ratios",
+          "tableTo": "rbfr_role_domains",
+          "columnsFrom": [
+            "domain_code"
+          ],
+          "columnsTo": [
+            "domain_code"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "rbfr_formula_ratios_formula_id_domain_code_pk": {
+          "name": "rbfr_formula_ratios_formula_id_domain_code_pk",
+          "columns": [
+            "formula_id",
+            "domain_code"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_formula_reviews": {
+      "name": "rbfr_formula_reviews",
+      "schema": "",
+      "columns": {
+        "review_id": {
+          "name": "review_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "formula_id": {
+          "name": "formula_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requested_by": {
+          "name": "requested_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reviewer_id": {
+          "name": "reviewer_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "rbfr_review_status_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING'"
+        },
+        "comment": {
+          "name": "comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requested_at": {
+          "name": "requested_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "rbfr_formula_reviews_formula_status_idx": {
+          "name": "rbfr_formula_reviews_formula_status_idx",
+          "columns": [
+            {
+              "expression": "formula_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rbfr_formula_reviews_reviewer_status_idx": {
+          "name": "rbfr_formula_reviews_reviewer_status_idx",
+          "columns": [
+            {
+              "expression": "reviewer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "rbfr_formula_reviews_formula_id_rbfr_formulas_formula_id_fk": {
+          "name": "rbfr_formula_reviews_formula_id_rbfr_formulas_formula_id_fk",
+          "tableFrom": "rbfr_formula_reviews",
+          "tableTo": "rbfr_formulas",
+          "columnsFrom": [
+            "formula_id"
+          ],
+          "columnsTo": [
+            "formula_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_formula_sensory_stability_records": {
+      "name": "rbfr_formula_sensory_stability_records",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "formula_id": {
+          "name": "formula_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stickiness_score": {
+          "name": "stickiness_score",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "freshness_score": {
+          "name": "freshness_score",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "absorption_score": {
+          "name": "absorption_score",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "spreadability_score": {
+          "name": "spreadability_score",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "afterfeel_score": {
+          "name": "afterfeel_score",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "viscosity_score": {
+          "name": "viscosity_score",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "separation_risk": {
+          "name": "separation_risk",
+          "type": "rbfr_risk_level_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "precipitation_risk": {
+          "name": "precipitation_risk",
+          "type": "rbfr_risk_level_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "color_change_risk": {
+          "name": "color_change_risk",
+          "type": "rbfr_risk_level_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "odor_change_risk": {
+          "name": "odor_change_risk",
+          "type": "rbfr_risk_level_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ph_stability_score": {
+          "name": "ph_stability_score",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "heat_stability_score": {
+          "name": "heat_stability_score",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "low_temp_stability_score": {
+          "name": "low_temp_stability_score",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "overall_stability_score": {
+          "name": "overall_stability_score",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "test_condition": {
+          "name": "test_condition",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "data_source": {
+          "name": "data_source",
+          "type": "rbfr_data_source_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'unknown'"
+        },
+        "confidence_level": {
+          "name": "confidence_level",
+          "type": "rbfr_confidence_level_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_formula_sensory_stability_records_formula_id_rbfr_formulas_formula_id_fk": {
+          "name": "rbfr_formula_sensory_stability_records_formula_id_rbfr_formulas_formula_id_fk",
+          "tableFrom": "rbfr_formula_sensory_stability_records",
+          "tableTo": "rbfr_formulas",
+          "columnsFrom": [
+            "formula_id"
+          ],
+          "columnsTo": [
+            "formula_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_formula_versions": {
+      "name": "rbfr_formula_versions",
+      "schema": "",
+      "columns": {
+        "version_id": {
+          "name": "version_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "formula_id": {
+          "name": "formula_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version_no": {
+          "name": "version_no",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fixed_at": {
+          "name": "fixed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fixed_by": {
+          "name": "fixed_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "app_version": {
+          "name": "app_version",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rule_version": {
+          "name": "rule_version",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "batch_size": {
+          "name": "batch_size",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_cells": {
+          "name": "total_cells",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_cost": {
+          "name": "total_cost",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "snapshot_json": {
+          "name": "snapshot_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_formula_versions_formula_id_rbfr_formulas_formula_id_fk": {
+          "name": "rbfr_formula_versions_formula_id_rbfr_formulas_formula_id_fk",
+          "tableFrom": "rbfr_formula_versions",
+          "tableTo": "rbfr_formulas",
+          "columnsFrom": [
+            "formula_id"
+          ],
+          "columnsTo": [
+            "formula_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "rbfr_formula_versions_formula_version_uq": {
+          "name": "rbfr_formula_versions_formula_version_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "formula_id",
+            "version_no"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_formulas": {
+      "name": "rbfr_formulas",
+      "schema": "",
+      "columns": {
+        "formula_id": {
+          "name": "formula_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lab_no": {
+          "name": "lab_no",
+          "type": "varchar(48)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "formula_name": {
+          "name": "formula_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "form_code": {
+          "name": "form_code",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "rbfr_formula_status_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "rbfr_formulas_project_status_idx": {
+          "name": "rbfr_formulas_project_status_idx",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rbfr_formulas_owner_status_idx": {
+          "name": "rbfr_formulas_owner_status_idx",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rbfr_formulas_name_idx": {
+          "name": "rbfr_formulas_name_idx",
+          "columns": [
+            {
+              "expression": "formula_name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "rbfr_formulas_project_id_rbfr_projects_project_id_fk": {
+          "name": "rbfr_formulas_project_id_rbfr_projects_project_id_fk",
+          "tableFrom": "rbfr_formulas",
+          "tableTo": "rbfr_projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "project_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "rbfr_formulas_lab_no_unique": {
+          "name": "rbfr_formulas_lab_no_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "lab_no"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_projects": {
+      "name": "rbfr_projects",
+      "schema": "",
+      "columns": {
+        "project_id": {
+          "name": "project_id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "project_name": {
+          "name": "project_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descr": {
+          "name": "descr",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_closed": {
+          "name": "is_closed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "rbfr_projects_owner_idx": {
+          "name": "rbfr_projects_owner_idx",
+          "columns": [
+            {
+              "expression": "owner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "is_closed",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_version_ratios": {
+      "name": "rbfr_version_ratios",
+      "schema": "",
+      "columns": {
+        "version_id": {
+          "name": "version_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "domain_code": {
+          "name": "domain_code",
+          "type": "varchar(24)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_ratio": {
+          "name": "target_ratio",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "result_ratio": {
+          "name": "result_ratio",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cell_count": {
+          "name": "cell_count",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_main": {
+          "name": "is_main",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_version_ratios_version_id_rbfr_formula_versions_version_id_fk": {
+          "name": "rbfr_version_ratios_version_id_rbfr_formula_versions_version_id_fk",
+          "tableFrom": "rbfr_version_ratios",
+          "tableTo": "rbfr_formula_versions",
+          "columnsFrom": [
+            "version_id"
+          ],
+          "columnsTo": [
+            "version_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "rbfr_version_ratios_version_id_domain_code_pk": {
+          "name": "rbfr_version_ratios_version_id_domain_code_pk",
+          "columns": [
+            "version_id",
+            "domain_code"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_version_recipe": {
+      "name": "rbfr_version_recipe",
+      "schema": "",
+      "columns": {
+        "version_id": {
+          "name": "version_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "line_no": {
+          "name": "line_no",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ingredient_id": {
+          "name": "ingredient_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "inci_name": {
+          "name": "inci_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_ko": {
+          "name": "name_ko",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "phase": {
+          "name": "phase",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pct": {
+          "name": "pct",
+          "type": "numeric(7, 4)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "grams": {
+          "name": "grams",
+          "type": "numeric(12, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "main_domain": {
+          "name": "main_domain",
+          "type": "varchar(24)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unit_price": {
+          "name": "unit_price",
+          "type": "numeric(14, 2)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rbfr_version_recipe_version_id_rbfr_formula_versions_version_id_fk": {
+          "name": "rbfr_version_recipe_version_id_rbfr_formula_versions_version_id_fk",
+          "tableFrom": "rbfr_version_recipe",
+          "tableTo": "rbfr_formula_versions",
+          "columnsFrom": [
+            "version_id"
+          ],
+          "columnsTo": [
+            "version_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "rbfr_version_recipe_ingredient_id_rbfr_ingredients_id_fk": {
+          "name": "rbfr_version_recipe_ingredient_id_rbfr_ingredients_id_fk",
+          "tableFrom": "rbfr_version_recipe",
+          "tableTo": "rbfr_ingredients",
+          "columnsFrom": [
+            "ingredient_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "rbfr_version_recipe_version_id_line_no_pk": {
+          "name": "rbfr_version_recipe_version_id_line_no_pk",
+          "columns": [
+            "version_id",
+            "line_no"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_app_settings": {
+      "name": "rbfr_app_settings",
+      "schema": "",
+      "columns": {
+        "setting_key": {
+          "name": "setting_key",
+          "type": "varchar(64)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "setting_val": {
+          "name": "setting_val",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "descr": {
+          "name": "descr",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.rbfr_audit_log": {
+      "name": "rbfr_audit_log",
+      "schema": "",
+      "columns": {
+        "log_id": {
+          "name": "log_id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "action": {
+          "name": "action",
+          "type": "varchar(48)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target": {
+          "name": "target",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "detail": {
+          "name": "detail",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip": {
+          "name": "ip",
+          "type": "varchar(45)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "rbfr_audit_log_user_idx": {
+          "name": "rbfr_audit_log_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rbfr_audit_log_action_idx": {
+          "name": "rbfr_audit_log_action_idx",
+          "columns": [
+            {
+              "expression": "action",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.rbfr_confidence_level_enum": {
+      "name": "rbfr_confidence_level_enum",
+      "schema": "public",
+      "values": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "public.rbfr_confirm_status_enum": {
+      "name": "rbfr_confirm_status_enum",
+      "schema": "public",
+      "values": [
+        "CONFIRMED",
+        "PROPOSED",
+        "REJECTED"
+      ]
+    },
+    "public.rbfr_data_source_enum": {
+      "name": "rbfr_data_source_enum",
+      "schema": "public",
+      "values": [
+        "manual_estimate",
+        "lab_test",
+        "literature",
+        "expert_review",
+        "unknown"
+      ]
+    },
+    "public.rbfr_domain_type_enum": {
+      "name": "rbfr_domain_type_enum",
+      "schema": "public",
+      "values": [
+        "DIRECT",
+        "INTEGRATED"
+      ]
+    },
+    "public.rbfr_fill_direction_enum": {
+      "name": "rbfr_fill_direction_enum",
+      "schema": "public",
+      "values": [
+        "CCW",
+        "CW"
+      ]
+    },
+    "public.rbfr_formula_status_enum": {
+      "name": "rbfr_formula_status_enum",
+      "schema": "public",
+      "values": [
+        "DRAFT",
+        "CALC",
+        "REVIEW",
+        "FIXED",
+        "ARCHIVED"
+      ]
+    },
+    "public.rbfr_incompat_severity_enum": {
+      "name": "rbfr_incompat_severity_enum",
+      "schema": "public",
+      "values": [
+        "BLOCK",
+        "WARN"
+      ]
+    },
+    "public.rbfr_interaction_type_enum": {
+      "name": "rbfr_interaction_type_enum",
+      "schema": "public",
+      "values": [
+        "synergy",
+        "conflict",
+        "neutral",
+        "unknown"
+      ]
+    },
+    "public.rbfr_profile_type_enum": {
+      "name": "rbfr_profile_type_enum",
+      "schema": "public",
+      "values": [
+        "PRIMARY",
+        "CROSS"
+      ]
+    },
+    "public.rbfr_reg_type_enum": {
+      "name": "rbfr_reg_type_enum",
+      "schema": "public",
+      "values": [
+        "ALLOW",
+        "BAN",
+        "LIMIT",
+        "COND",
+        "NODATA"
+      ]
+    },
+    "public.rbfr_review_status_enum": {
+      "name": "rbfr_review_status_enum",
+      "schema": "public",
+      "values": [
+        "PENDING",
+        "REVIEWING",
+        "APPROVED",
+        "CHANGES",
+        "REJECTED"
+      ]
+    },
+    "public.rbfr_risk_level_enum": {
+      "name": "rbfr_risk_level_enum",
+      "schema": "public",
+      "values": [
+        "상",
+        "중",
+        "하"
+      ]
+    },
+    "public.rbfr_tox_status_enum": {
+      "name": "rbfr_tox_status_enum",
+      "schema": "public",
+      "values": [
+        "NONE",
+        "LISTED",
+        "UNKNOWN"
+      ]
+    },
+    "public.rbfr_user_role_enum": {
+      "name": "rbfr_user_role_enum",
+      "schema": "public",
+      "values": [
+        "REVIEWER",
+        "DESIGNER",
+        "DATA",
+        "VIEWER"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

@@ -157,6 +157,8 @@ services:
       USER_API_URL: http://api-user:3000
       # AI 어시스턴트 설정: 조직 기본 모델 select 후보(모델 유니버스) 조회 대상(language-model, 내부 도커 네트워크).
       LANGUAGE_MODEL_API_URL: http://api-language-model:8000
+      # RBFR: 식약처 화장품 원료성분정보 공공데이터포털 인증키(04_식약청API연동.md 참고). 커밋 금지.
+      RBFR_MFDS_API_KEY: ${RBFR_MFDS_API_KEY:-}
     ports:
       - "6000:3000"
     depends_on:

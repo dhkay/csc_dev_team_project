@@ -19,6 +19,10 @@ class TilesStore {
     // 스토리지: 공통/조직/개인 파일(클릭 → /{slug}/admin/storage). 전 조직원이 들어간다.
     //   개인 영역은 누구에게나 있고 공통은 조직 전원이 함께 쓰므로 관리 권한으로 가리지 않는다.
     { id: 'storage', kind: 'placeholder', title: '스토리지', subtitle: '파일/용량', size: '2x2', iconName: 'storage', href: 'storage' },
+    // RBFR 연구(원료·처방 시뮬레이터, 클릭 → /{slug}/tools/rbfr). FeatureKey.Rbfr 게이팅이
+    // 프론트까지 배선되기 전까지의 임시 등록 지점 — 조직 관리 가능자에게만 노출한다
+    // (실제 5단계 내부 권한은 RBFR 도메인 자체 rbfr_user_roles가 별도로 관리, 02번 문서 참고).
+    { id: 'rbfr', kind: 'placeholder', title: 'RBFR 연구', subtitle: '원료·처방 시뮬레이터', size: '2x1', iconName: 'rbfr', requireOrgManage: true, href: '/tools/rbfr' },
     // 아래 6개(권한 관리/콘텐츠/통계/설정/감사 로그/결제)는 한시적으로 숨김(hidden): 정의는 유지
     // 기능 재오픈 시 각 타일의 hidden 플래그만 제거하면 된다.
     // 조직 관리 가능자(ROOT/시스템관리) 전용: 역할/권한 부여 관리. 클릭 시 /{slug}/admin/roles.

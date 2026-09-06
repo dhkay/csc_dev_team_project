@@ -36,6 +36,13 @@
       "when": 1785458078556,
       "tag": "0004_assistant_model_key_unification",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788688120209,
+      "tag": "0005_simple_tusk",
+      "breakpoints": true
     }
   ]
 }

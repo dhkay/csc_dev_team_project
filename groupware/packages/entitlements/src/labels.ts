@@ -13,6 +13,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   [FeatureKey.Settings]: '설정',
   [FeatureKey.AuditLog]: '감사 로그',
   [FeatureKey.Billing]: '결제',
+  [FeatureKey.Rbfr]: 'RBFR 연구',
 };
 
 export const AI_TOOL_LABELS: Record<AiToolKey, string> = {

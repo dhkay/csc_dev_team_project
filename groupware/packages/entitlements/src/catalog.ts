@@ -62,6 +62,7 @@ export enum FeatureKey {
   Settings = 'settings',
   AuditLog = 'audit-log',
   Billing = 'billing',
+  Rbfr = 'rbfr',
 }
 
 /** 카탈로그 시드 메타: 신규 key 최초 삽입 시 기본값(이후 표시명/slug 는 플랫폼 편집이 우선) */
@@ -124,6 +125,7 @@ export const FEATURE_CATALOG: CatalogSeed<FeatureKey>[] = [
   { key: FeatureKey.Settings, name: '설정', description: '조직 설정', sortOrder: 60 },
   { key: FeatureKey.AuditLog, name: '감사 로그', description: '활동 감사 로그', sortOrder: 70 },
   { key: FeatureKey.Billing, name: '결제', description: '구독/결제 관리', sortOrder: 80 },
+  { key: FeatureKey.Rbfr, name: 'RBFR 연구', description: '역할 기반 배합 비율 원료·처방 시뮬레이터', sortOrder: 90 },
 ];
 
 /** 전체 key 목록: DTO 검증(@IsIn), UI 순회 등에서 사용 */

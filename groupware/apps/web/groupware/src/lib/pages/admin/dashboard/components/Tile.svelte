@@ -10,9 +10,12 @@
   }
   let { tile }: Props = $props();
 
-  // href 가 있으면 /{orgSlug}/admin/{href} 로 이동하는 클릭 가능 카드가 된다.
+  // href 가 있으면 클릭 가능 카드가 된다. '/'로 시작하면 orgSlug 바로 아래 절대경로로,
+  // 아니면 기존처럼 /{orgSlug}/admin/{href} 로 조립한다(tile.types.ts 참고).
   const slug = $derived($page.params.orgSlug);
-  const linkHref = $derived(tile.href ? `/${slug}/admin/${tile.href}` : undefined);
+  const linkHref = $derived(
+    tile.href ? (tile.href.startsWith('/') ? `/${slug}${tile.href}` : `/${slug}/admin/${tile.href}`) : undefined
+  );
 
   // static/assets/icon/dashboard/{iconName}.svg → 루트 기준 URL.
   const iconSrc = $derived(tile.iconName ? `/assets/icon/dashboard/${tile.iconName}.svg` : undefined);
@@ -31,7 +34,8 @@
     settings: '#eef4ff',
     logs: '#eef4ff',
     billing: '#fff1e8',
-    storage: '#eef4ff'
+    storage: '#eef4ff',
+    rbfr: '#eef4ff'
   };
   const tint = $derived(tile.iconName ? (TILE_TINT[tile.iconName] ?? '#eef2f8') : undefined);
   const tintClass = 'h-32 w-32';

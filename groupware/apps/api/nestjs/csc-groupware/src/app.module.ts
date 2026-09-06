@@ -5,6 +5,7 @@ import { ServiceTokenGuard } from '@csc/net-utils/nest';
 import { EntitlementModule } from './domains/entitlement/entitlement.module';
 import { ApiCredentialModule } from './domains/api-credential/api-credential.module';
 import { AssistantSettingsModule } from './domains/assistant-settings/assistant-settings.module';
+import { RbfrModule } from './domains/rbfr/rbfr.module';
 
 /**
  * 루트 DI 조립: csc 그룹웨어 API.
@@ -19,6 +20,7 @@ import { AssistantSettingsModule } from './domains/assistant-settings/assistant-
     EntitlementModule,
     ApiCredentialModule,
     AssistantSettingsModule,
+    RbfrModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ServiceTokenGuard }],
 })
