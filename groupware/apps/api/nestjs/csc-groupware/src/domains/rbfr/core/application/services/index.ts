@@ -6,3 +6,7 @@ export * from './rbfr-formula-registration.service';
 export * from './rbfr-mfds-sync.service';
 export * from './rbfr-recommendation.service';
 export * from './rbfr-settings.service';
+export * from './rbfr-ingredient-detail.service';
+export * from './rbfr-formula-sensory-stability.service';
+export * from './rbfr-formula-review.service';
+export * from './rbfr-formula-version.service';

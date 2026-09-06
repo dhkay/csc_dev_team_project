@@ -6,3 +6,6 @@ export * from './create-profile.dto';
 export * from './approve-cell-rule.dto';
 export * from './set-cell-mapping.dto';
 export * from './set-profile-active.dto';
+export * from './ingredient-detail.dto';
+export * from './create-sensory-stability-record.dto';
+export * from './formula-review.dto';

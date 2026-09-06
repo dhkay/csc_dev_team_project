@@ -3,3 +3,7 @@ export * from './rbfr-ingredient-repository.port';
 export * from './rbfr-formula-registration-repository.port';
 export * from './rbfr-mfds-api.port';
 export * from './rbfr-settings-repository.port';
+export * from './rbfr-ingredient-detail-repository.port';
+export * from './rbfr-formula-sensory-stability-repository.port';
+export * from './rbfr-formula-review-repository.port';
+export * from './rbfr-formula-version-repository.port';

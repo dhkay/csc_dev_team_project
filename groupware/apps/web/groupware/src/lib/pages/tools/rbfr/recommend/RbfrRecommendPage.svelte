@@ -5,6 +5,7 @@
 	import { page } from '$app/state';
 	import { createQuery, createMutation } from '@tanstack/svelte-query';
 	import { rbfrService } from '$lib/features/rbfr/services/rbfr.service';
+	import RoleDomainPentagonChart from '../components/RoleDomainPentagonChart.svelte';
 
 	const profileCode = $derived(page.url.searchParams.get('profileCode') ?? 'SKIN');
 	const domainsQuery = createQuery(() => rbfrService.directDomains(profileCode));
@@ -43,6 +44,15 @@
 			{:else if domainsQuery.isError}
 				<p class="text-xs text-red-600">역할 도메인을 불러오지 못했습니다.</p>
 			{:else}
+				<div class="mb-3 flex justify-center">
+					<RoleDomainPentagonChart
+						values={domainsQuery.data.map((domainCode) => ({
+							domainCode,
+							percent: targetPercents[domainCode] ?? 0
+						}))}
+						size={180}
+					/>
+				</div>
 				<div class="space-y-3">
 					{#each domainsQuery.data as domainCode (domainCode)}
 						<label class="block text-sm">

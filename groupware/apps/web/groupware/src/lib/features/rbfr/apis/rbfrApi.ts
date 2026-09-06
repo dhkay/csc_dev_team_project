@@ -13,6 +13,22 @@ import type {
 	CreateProfileInput,
 	CreateProfileResult,
 	FormulaCalculationResult,
+	FormulaReviewSummary,
+	FormulaSensoryStabilityInput,
+	FormulaSensoryStabilityRecord,
+	FormulaVersionSummary,
+	IngredientCasEntry,
+	IngredientCasInput,
+	IngredientCertEntry,
+	IngredientCertInput,
+	IngredientFlagEntry,
+	IngredientFlagInput,
+	IngredientIncompatInput,
+	IngredientIncompatRecord,
+	IngredientInteractionEntry,
+	IngredientInteractionInput,
+	IngredientRegulationInput,
+	IngredientRegulationRecord,
 	IngredientSummary,
 	ProfileSummary,
 	RecommendIngredientsResult,
@@ -100,4 +116,151 @@ export function setCellMapping(
 	return run<{ ruleVersion: string; count: number }>(() =>
 		frontClient().PUT(ROUTES.RBFR.cellMapping(ruleVersion), { entries })
 	);
+}
+
+export function addIngredientCas(
+	ingredientId: number,
+	input: IngredientCasInput
+): Promise<ApiResult<{ ingredientId: number }>> {
+	return run<{ ingredientId: number }>(() =>
+		frontClient().POST(ROUTES.RBFR.ingredientCas(ingredientId), input)
+	);
+}
+
+export function listIngredientCas(ingredientId: number): Promise<ApiResult<IngredientCasEntry[]>> {
+	return run<IngredientCasEntry[]>(() => frontClient().GET(ROUTES.RBFR.ingredientCas(ingredientId)));
+}
+
+export function addIngredientRegulation(
+	ingredientId: number,
+	input: IngredientRegulationInput
+): Promise<ApiResult<IngredientRegulationRecord>> {
+	return run<IngredientRegulationRecord>(() =>
+		frontClient().POST(ROUTES.RBFR.ingredientRegulations(ingredientId), input)
+	);
+}
+
+export function listIngredientRegulations(
+	ingredientId: number
+): Promise<ApiResult<IngredientRegulationRecord[]>> {
+	return run<IngredientRegulationRecord[]>(() =>
+		frontClient().GET(ROUTES.RBFR.ingredientRegulations(ingredientId))
+	);
+}
+
+export function addIngredientCert(
+	ingredientId: number,
+	input: IngredientCertInput
+): Promise<ApiResult<{ ingredientId: number }>> {
+	return run<{ ingredientId: number }>(() =>
+		frontClient().POST(ROUTES.RBFR.ingredientCerts(ingredientId), input)
+	);
+}
+
+export function listIngredientCerts(ingredientId: number): Promise<ApiResult<IngredientCertEntry[]>> {
+	return run<IngredientCertEntry[]>(() => frontClient().GET(ROUTES.RBFR.ingredientCerts(ingredientId)));
+}
+
+export function addIngredientFlag(
+	ingredientId: number,
+	input: IngredientFlagInput
+): Promise<ApiResult<{ ingredientId: number }>> {
+	return run<{ ingredientId: number }>(() =>
+		frontClient().POST(ROUTES.RBFR.ingredientFlags(ingredientId), input)
+	);
+}
+
+export function listIngredientFlags(ingredientId: number): Promise<ApiResult<IngredientFlagEntry[]>> {
+	return run<IngredientFlagEntry[]>(() => frontClient().GET(ROUTES.RBFR.ingredientFlags(ingredientId)));
+}
+
+export function addIngredientInteraction(
+	input: IngredientInteractionInput
+): Promise<ApiResult<IngredientInteractionEntry>> {
+	return run<IngredientInteractionEntry>(() =>
+		frontClient().POST(ROUTES.RBFR.ingredientInteractions(), input)
+	);
+}
+
+export function listIngredientInteractions(
+	ingredientId: number
+): Promise<ApiResult<IngredientInteractionEntry[]>> {
+	return run<IngredientInteractionEntry[]>(() =>
+		frontClient().GET(ROUTES.RBFR.ingredientInteractions(ingredientId))
+	);
+}
+
+export function addIngredientIncompat(
+	input: IngredientIncompatInput
+): Promise<ApiResult<{ ingredientId: number; otherId: number }>> {
+	return run<{ ingredientId: number; otherId: number }>(() =>
+		frontClient().POST(ROUTES.RBFR.ingredientIncompat(), input)
+	);
+}
+
+export function listIngredientIncompat(
+	ingredientId: number
+): Promise<ApiResult<IngredientIncompatRecord[]>> {
+	return run<IngredientIncompatRecord[]>(() =>
+		frontClient().GET(ROUTES.RBFR.ingredientIncompat(ingredientId))
+	);
+}
+
+export function addSensoryStabilityRecord(
+	formulaId: number,
+	input: FormulaSensoryStabilityInput
+): Promise<ApiResult<FormulaSensoryStabilityRecord>> {
+	return run<FormulaSensoryStabilityRecord>(() =>
+		frontClient().POST(ROUTES.RBFR.sensoryStability(formulaId), input)
+	);
+}
+
+export function listSensoryStabilityRecords(
+	formulaId: number
+): Promise<ApiResult<FormulaSensoryStabilityRecord[]>> {
+	return run<FormulaSensoryStabilityRecord[]>(() =>
+		frontClient().GET(ROUTES.RBFR.sensoryStability(formulaId))
+	);
+}
+
+export function requestReview(
+	formulaId: number,
+	requestedBy: number
+): Promise<ApiResult<FormulaReviewSummary>> {
+	return run<FormulaReviewSummary>(() =>
+		frontClient().POST(ROUTES.RBFR.formulaReviews(formulaId), { requestedBy })
+	);
+}
+
+export function listFormulaReviews(formulaId: number): Promise<ApiResult<FormulaReviewSummary[]>> {
+	return run<FormulaReviewSummary[]>(() => frontClient().GET(ROUTES.RBFR.formulaReviews(formulaId)));
+}
+
+export function listPendingReviews(): Promise<ApiResult<FormulaReviewSummary[]>> {
+	return run<FormulaReviewSummary[]>(() => frontClient().GET(ROUTES.RBFR.PENDING_REVIEWS));
+}
+
+export function listMyAssignedReviews(reviewerId: number): Promise<ApiResult<FormulaReviewSummary[]>> {
+	return run<FormulaReviewSummary[]>(() => frontClient().GET(ROUTES.RBFR.myAssignedReviews(reviewerId)));
+}
+
+export function pickupReview(reviewId: number, reviewerId: number): Promise<ApiResult<FormulaReviewSummary>> {
+	return run<FormulaReviewSummary>(() =>
+		frontClient().POST(ROUTES.RBFR.pickupReview(reviewId), { reviewerId })
+	);
+}
+
+export function decideReview(
+	reviewId: number,
+	decision: 'APPROVED' | 'CHANGES' | 'REJECTED',
+	comment?: string,
+	profileCode?: string
+): Promise<ApiResult<FormulaReviewSummary>> {
+	return run<FormulaReviewSummary>(() =>
+		frontClient().POST(ROUTES.RBFR.decideReview(reviewId), { decision, comment, profileCode })
+	);
+}
+
+export function listFormulaVersions(formulaId: number): Promise<ApiResult<FormulaVersionSummary[]>> {
+	return run<FormulaVersionSummary[]>(() => frontClient().GET(ROUTES.RBFR.formulaVersions(formulaId)));
 }

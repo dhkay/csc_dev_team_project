@@ -55,6 +55,10 @@
   없음 확인) 작성 및 `origin/main`에 푸시 완료.** git init/commit/push 세 단계 모두 자동 실행
   권한 검사기에 한 번씩 막혔으나 사용자가 그때그때 "진행해"로 승인해 전부 통과함(반복되면
   `/permissions`로 Bash git 규칙을 허용 목록에 추가하도록 안내함).
+- **커밋 `c698359`(2026-09-06, "올려줘" 승인 후 push 완료)**: 7단계 화면 4개(정방향/역방향/
+  원료등록/설정) + 6번째 등록 지점(사이드바 임시)까지 123개 파일. 실제 MFDS 키가 담긴
+  `.env`는 gitignore로 제외됨을 push 직전에 재확인. 여전히 `main`에 직접 push하는 중(브랜치
+  분리는 아직 미결정 — "협업" 절 참고, 다음 push 시점에 다시 확인할 것).
 
 ## 진행 정책 (2026-09-06 갱신 — 실제 구현 착수 승인됨)
 - ~~지금은 groupware에 아무것도 넣지 않는다~~ **(같은 날 사용자가 직접 해제)**: "지침은
@@ -151,7 +155,9 @@ node engine/tests/validation.test.ts
 - 10단계 QA 및 안정화
 
 ## 현재 작업
-- 없음. **5단계(DB 저장/조회 구현) 전체 완료.** 6단계(API 연결) 착수 대기 중.
+- 없음. **1~7단계 전부 완료(7단계 화면 연결까지 사실상 마무리).** 8단계(관리자/검증
+  워크플로우) 착수 대기 중 — 상세 진행 상황은 이 문서 하단 "완료 내역" 로그와 "다음 작업"
+  절 참고(아래 5단계 하위 조각 목록은 그 단계 자체의 옛 기록이라 그대로 남겨둔다).
 - 5단계 하위 조각(전부 완료):
   1. ~~`03 DB스키마.md`의 34개 테이블 → Drizzle 스키마 파일 작성~~ **완료**
   2. ~~`schema/index.ts`에 등록~~ **완료**
@@ -525,6 +531,178 @@ node engine/tests/validation.test.ts
     전용이 아니라 그룹웨어 공용 인증 계층을 건드리므로, 다른 개발자와 조율이 특히 필요한
     지점이다(진행 정책/Git 협업 절 참고).
 
+- **완료 내역(2026-09-06, 7단계: 원료 등록 세부 서브폼 완성)**: 사용자가 여러 다음 작업
+  후보 중 이걸 선택. 02번 문서 탭3의 CAS/국가별 규제 확인/인증 정보/무첨가 분류 + 탭3 부속
+  원료쌍(조합계수·병용금기)까지 6개 하위 테이블을 한 번에 연결했다.
+  - **백엔드(신규)**: `core/domain/types/rbfr-ingredient-detail.types.ts`(6개 입력/엔트리
+    타입 쌍). **이름 충돌 발견·해결**: `IngredientRegulationEntry`/`IngredientIncompatEntry`가
+    검증 엔진(`rbfr-validation.types.ts`, ingredientId가 string인 별개 read-model)에 이미
+    존재해 `tsc`가 "already exported a member" 에러를 냄 → 신규 타입을
+    `IngredientRegulationRecord`/`IngredientIncompatRecord`로 개명해 해결(같은 이름의 서로
+    다른 모델이 각자의 용도로 공존). Outbound
+    `rbfr-ingredient-detail-repository.port.ts`(`RBFR_INGREDIENT_DETAIL_REPOSITORY_PORT`) +
+    Drizzle 어댑터(CAS/인증/무첨가는 단순 insert+list, 국가별 규제는 사람이 입력하면 기본
+    CONFIRMED, 원료쌍 병용금기는 `ingredientId`/`otherId` 어느 쪽에 있어도 찾도록 조회 시
+    양방향 검색 후 호출자 관점으로 정규화해 반환). Inbound
+    `rbfr-ingredient-detail.port.ts`(`RBFR_INGREDIENT_DETAIL_PORT`) + 서비스
+    (`RbfrIngredientDetailService`: 조합계수는 입력 순서와 무관하게 `ingredientAId <
+    ingredientBId`로 정규화해 (A,B)/(B,A) 중복을 막고, 동일 원료끼리의 조합계수·병용금기
+    등록은 거부). DTO(`ingredient-detail.dto.ts`, 6개 클래스). 신규
+    `RbfrIngredientDetailController`(12개 액션: `ingredients/:id/{cas,regulations,certs,
+    flags}` GET+POST, `ingredient-interactions`/`ingredient-incompat` GET(쿼리 ingredientId)+
+    POST). `rbfr.module.ts`에 6번째 Controller로 등록. 테스트 6개 신규(정규화 규칙 검증
+    위주: 규제 status 기본값, 조합계수 A/B 정렬 양방향, 동일 원료 거부 2가지).
+  - **의도적 단순화**: 국가/인증종류/무첨가분류 값 집합은 `rbfr_code_items`가 관리할
+    영역이지만 그 CRUD가 아직 없어(확인 필요로 남김), 백엔드는 순수 문자열로 받고 프론트
+    select 후보값만 02번 문서가 명시한 목록(10개국/인증 4종/무첨가 5종)을 하드코딩했다(기존
+    `solubility` select와 동일 전례). 수정/삭제는 지원하지 않는다(추가+조회만, 기존
+    원료 등록·Profile 등록과 동일한 단순화 수준).
+  - **BFF**: `routes/api/rbfr/ingredients/[ingredientId]/{cas,regulations,certs,flags}/
+    +server.ts`(GET+POST 4개), `routes/api/rbfr/ingredient-interactions/+server.ts`,
+    `routes/api/rbfr/ingredient-incompat/+server.ts`(GET+POST 2개). `apiRoutes.ts`에 6개
+    경로 헬퍼 추가.
+  - **프론트**: `lib/features/rbfr/`에 6개 조회 query + 6개 등록 mutation 신규(원료쌍 2개는
+    양쪽 원료 목록을 모두 invalidate). `lib/pages/tools/rbfr/register/components/`에
+    `IngredientDetailSections.svelte`(방금 등록한 원료에 CAS/규제/인증/무첨가 추가,
+    인증 유효기간 만료 시 배지 강조) + `IngredientPairsSection.svelte`(이미 등록된 원료
+    두 개를 골라 조합계수/병용금기 등록, BLOCK은 강조 표시) 신규 작성해
+    `RbfrIngredientRegisterPage.svelte`에 연결.
+  - **검증**: `npx tsc --noEmit`(csc-groupware) → RBFR 에러 0건(이름 충돌 해결 후). `npx jest
+    domains/rbfr` → **10 suites, 63 tests 전부 통과**. `npx svelte-check`(apps/web/groupware)
+    → RBFR 에러 0건, 기존 무관 에러 9건 그대로(회귀 없음).
+
+- **완료 내역(2026-09-06, 7단계 마지막 두 조각: 오각형 애니메이션 + 처방 사용감·안정성
+  기록)**: 사용자가 계속 진행 요청, 7단계에 남아 있던 마지막 두 항목을 함께 완료.
+  - **오각형 실시간 애니메이션**: `lib/pages/tools/rbfr/components/
+    RoleDomainPentagonChart.svelte` 신규(Svelte 5 `svelte/motion`의 `Tween.of()`로 축마다
+    독립 보간, 250~400ms ease-out — 02번 문서 "오각형 차트 애니메이션 사양" 그대로). 역할
+    수만큼 축을 동적으로 그리며(360/역할수 각도), 이건 화면 프리뷰 레이어이고 승인·확정용
+    공식 표현은 05번 문서의 Cell 변환을 거친 값이라는 점을 화면에도 문구로 명시. 정방향 계산
+    화면(`RbfrPage.svelte`, 비중값 표시)과 역방향 추천 화면(`RbfrRecommendPage.svelte`, 슬라이더
+    조작 중 실시간 미리보기) 둘 다에 연결 — 02번 문서가 탭1/탭2 모두에 이 요구사항을 명시.
+    **확인 필요로 남긴 것**: 축 개수(역할 수)가 화면 도중 바뀌면(다른 Profile 전환 등) 배열
+    길이가 달라져 `Tween`의 기본 보간이 실패할 수 있음 — 지금은 화면 하나가 한 Profile만
+    다뤄 실제로는 발생하지 않는다.
+  - **처방 사용감·안정성 기록**: `core/domain/types/rbfr-formula-sensory-stability.types.ts`
+    (척도 0~100으로 잠정 채택, **확인 필요**: 실제 척도 범위는 실 스펙도 미확정). Outbound
+    `rbfr-formula-sensory-stability-repository.port.ts` + Drizzle 어댑터(단순 insert+list).
+    Inbound `rbfr-formula-sensory-stability.port.ts` + 서비스(`RbfrFormulaSensoryStabilityService`,
+    순수 위임). DTO(`create-sensory-stability-record.dto.ts`, 필드 전부 optional). 기존
+    `RbfrFormulaController`에 `POST`/`GET .../formulas/:formulaId/sensory-stability` 2개 액션
+    추가(새 Controller를 만들지 않고 기존 것에 얹음 — 이미 처방 계산/생성을 다루던 곳이라
+    응집도가 맞음). `rbfr.module.ts`에 새 Port/Adapter 등록(Controller 개수는 6개로 불변).
+    테스트 2개 신규(단순 위임 확인). 프론트: `lib/pages/tools/rbfr/components/
+    FormulaSensoryStabilitySection.svelte`(점수 10항목 + 위험도 4항목 입력 폼, lab_test가
+    아니면 "예측값" 배지) 신규 작성해 `RbfrPage.svelte`(정방향 계산 결과 화면)에 연결.
+  - **검증**: `npx tsc --noEmit`(csc-groupware) → RBFR 에러 0건. `npx jest domains/rbfr` →
+    **11 suites, 65 tests 전부 통과**. `npx svelte-check`(apps/web/groupware) → RBFR 에러
+    0건, 기존 무관 에러 9건 그대로(회귀 없음).
+  - **이제 7단계(화면 연결)가 사실상 완료됐다.** 남은 건 8단계(관리자/검증 워크플로우)와
+    10단계(QA)뿐이다(사이드바 "제대로" 만들기와 MFDS 네트워크 확인은 별도 트랙으로 계속
+    남아 있음).
+
+- **완료 내역(2026-09-06, 8단계 첫 조각: 검수 워크플로우)**: 사용자가 계속 진행 요청, 로드맵의
+  8단계(관리자/검증 워크플로우)에 처음 착수. 02번 문서 "REVIEWER: 검수 요청 처리(승인·수정요청·
+  반려). 자기 처방은 자기가 못 함"을 구현했다.
+  - **백엔드(신규)**: `core/domain/types/rbfr-formula-review.types.ts`(`FormulaReviewSummary`/
+    `FormulaOwnerStatus`). Outbound `rbfr-formula-review-repository.port.ts`
+    (`RBFR_FORMULA_REVIEW_REPOSITORY_PORT`) + Drizzle 어댑터(`rbfr_formula_reviews` CRUD +
+    `rbfr_formulas`의 소유자/상태 조회·갱신). Inbound `rbfr-formula-review.port.ts`
+    (`RBFR_FORMULA_REVIEW_PORT`) + 서비스(`RbfrFormulaReviewService`): 상태 전이 규칙을 서비스
+    레이어가 강제한다 — (1) 검수 요청은 처방이 DRAFT/CALC일 때만 가능, 성공 시 처방 상태를
+    REVIEW로 전환. (2) 배정(pickup)은 PENDING 상태의 요청만 가능하고, **처방 소유자 본인은
+    배정받을 수 없다**(자기 검수 금지, 02번 문서 그대로). (3) 결정(decide)은 REVIEWING으로
+    배정된 요청만 가능하고, APPROVED는 처방을 FIXED로, CHANGES/REJECTED는 DRAFT로 되돌린다
+    (재작성 후 재요청 가능). DTO(`formula-review.dto.ts`, 3개 클래스). 신규 Controller 없이
+    기존 `RbfrFormulaController`에 `POST`/`GET .../formulas/:formulaId/reviews` 2개를 더하고,
+    나머지 3개 액션(`GET /reviews/pending`, `POST /reviews/:id/pickup`,
+    `POST /reviews/:id/decide`)은 새 `RbfrReviewController`(7번째 Controller)에 배치. 테스트
+    9개 신규(상태 전이 규칙 5가지 분기 전부 커버: 존재하지 않는 처방/검수, 잘못된 처방 상태,
+    자기 검수 금지, PENDING/REVIEWING 아닐 때 거부, APPROVED/CHANGES/REJECTED 각각의 처방
+    상태 전이).
+  - **의도적으로 뺀 것(확인 필요로 기록)**: APPROVED 시 실제 버전 스냅샷
+    (`rbfr_formula_versions`+`rbfr_version_recipe`+`rbfr_version_ratios` 생성, 05번 문서
+    "확정 후 불변" 원칙의 실제 구현)은 포함하지 않았다 — formula.status만 FIXED로 바꾸고
+    실제 확정 스냅샷을 만드는 것은 별도 조각(랩 넘버 채번 규칙도 여전히 미확정). REJECTED와
+    CHANGES를 처방 상태 전이 면에서 구분하지 않았다(둘 다 DRAFT로 되돌림) — 실제로 다르게
+    처리해야 하는지는 실제 스펙도 불명확.
+  - **BFF**: `routes/api/rbfr/formulas/[formulaId]/reviews/+server.ts`(GET+POST),
+    `routes/api/rbfr/reviews/pending/+server.ts`(GET),
+    `routes/api/rbfr/reviews/[reviewId]/pickup/+server.ts`(POST),
+    `routes/api/rbfr/reviews/[reviewId]/decide/+server.ts`(POST). `apiRoutes.ts`에 4개 경로
+    헬퍼 추가.
+  - **프론트**: `lib/features/rbfr/`에 검수 타입/api/query 2개/mutation 3개 신규.
+    `lib/pages/tools/rbfr/components/FormulaReviewSection.svelte`(정방향 계산 화면에 검수 요청
+    버튼 + 이력 표시, `RbfrPage.svelte`에 연결) + 신규 `lib/pages/tools/rbfr/review/
+    RbfrReviewPage.svelte`(REVIEWER 대기열 화면: 대기 중 요청 목록 → 배정받기 →
+    승인/수정요청/반려, `/tools/rbfr/review`). **의도적 한계**: "내가 배정받은 검수" 목록을
+    조회하는 서버 엔드포인트가 없어 이 세션에서 배정 성공한 것만 로컬 상태로 추적한다(새로고침
+    하면 사라짐, 확인 필요로 남김).
+  - **검증**: `npx tsc --noEmit`(csc-groupware) → RBFR 에러 0건. `npx jest domains/rbfr` →
+    **12 suites, 76 tests 전부 통과**. `npx svelte-check`(apps/web/groupware) → RBFR 에러
+    0건, 기존 무관 에러 9건 그대로(회귀 없음).
+
+- **완료 내역(2026-09-06, 8단계 두 번째 조각: "내가 배정받은 검수" 서버 조회)**: 사용자가
+  계속 진행 요청, 직전 조각에서 "확인 필요"로 남겼던 가장 작고 명확한 항목부터 해결.
+  - **백엔드**: `RbfrFormulaReviewRepositoryPort`/어댑터에 `listReviewsByReviewer(reviewerId)`
+    추가(reviewerId 일치 + status=REVIEWING 조건으로 조회). Inbound Port/서비스에
+    `listMyAssignedReviews(reviewerId)` 추가(순수 위임). `RbfrReviewController`에
+    `GET /rbfr-api/reviews/mine?reviewerId=` 추가(Controller 개수는 7개로 불변). 테스트 1개
+    신규.
+  - **프론트**: `routes/api/rbfr/reviews/mine/+server.ts` 신규, `apiRoutes.ts`/`rbfrApi.ts`에
+    함수 추가, `queries/myAssignedReviews.query.ts` 신규. `RbfrReviewPage.svelte`의 로컬
+    `myAssignments` state를 실제 서버 쿼리로 교체 — 이제 새로고침해도 배정 목록이 유지된다.
+    `pickupReview`/`decideReview` mutation이 성공 시 이 쿼리도 함께 invalidate하도록 갱신.
+  - **검증**: `npx tsc --noEmit`(csc-groupware) → RBFR 에러 0건. `npx jest domains/rbfr` →
+    **12 suites, 77 tests 전부 통과**. `npx svelte-check`(apps/web/groupware) → RBFR 에러
+    0건, 기존 무관 에러 9건 그대로(회귀 없음).
+
+- **완료 내역(2026-09-06, 8단계 세 번째 조각: 승인(APPROVED) 시 실제 버전 스냅샷 생성)**:
+  사용자가 계속 진행 요청. 05번 문서 원칙7 "확정 후 불변"의 실제 구현 — 지금까지는
+  formula.status만 FIXED로 바뀌고 실제 확정 스냅샷이 안 만들어졌었다.
+  - **백엔드(신규)**: `core/domain/types/rbfr-formula-version.types.ts`. Outbound
+    `rbfr-formula-version-repository.port.ts`(`RBFR_FORMULA_VERSION_REPOSITORY_PORT`) +
+    Drizzle 어댑터 — 처방의 원료 배합 라인(원료명+실제 배합비+최근 단가), 목표 비중
+    (`rbfr_formula_ratios`), 배치 크기(`rbfr_formula_conditions`, 조건 행 없으면 기본 100),
+    그 Profile에서 가장 최근 승인된 Cell 규칙 판+변환표, 다음 버전 번호를 조회하고,
+    `rbfr_formula_versions`+`rbfr_version_recipe`+`rbfr_version_ratios` 3개 테이블을 한
+    트랜잭션으로 생성. Inbound `rbfr-formula-version.port.ts`(`RBFR_FORMULA_VERSION_PORT`) +
+    서비스(`RbfrFormulaVersionService`): 실제 산출값(resultRatio)과 원가는 새로 계산하지
+    않고 이미 검증된 `RbfrFormulaCalculationService`를 재사용해서 얻는다(계산 로직 중복
+    방지). Cell 변환만 이 서비스가 직접 한다 — 순수 함수 `cellCountFor(ratioPercent, mapping)`
+    로 "이상~미만"(03번 문서 그대로) 구간을 찾아 칸 수를 매긴다. **승인된 Cell 규칙 판이
+    없는 Profile은 확정을 거부한다**(Profile 활성화와 같은 종류의 불변식).
+    `RbfrFormulaReviewService.decideReview`가 APPROVED일 때 이 서비스를 먼저 호출하도록
+    변경 — **스냅샷 생성이 실패하면(확인 필요 항목이라 실패 가능성 있음) 검수/처방 상태
+    갱신을 아예 하지 않는다**(절반만 반영된 상태 방지, 순서를 스냅샷 생성 → 상태 갱신으로
+    고정). `decideReview`에 `profileCode` 파라미터 추가(APPROVED일 때만 필수). 기존
+    `RbfrReviewController`에 `GET .../formulas/:formulaId/versions` 추가(Controller 개수
+    7개 불변). 테스트 6개 신규(cellCountFor 경계값 2개, confirmFormula 승인판 없음 거부,
+    스냅샷 성공 시 정확한 계산값 검증) + 기존 review 테스트 갱신(APPROVED 시나리오에
+    profileCode/스냅샷 mock 반영, "스냅샷 실패 시 상태 안 바뀜" 테스트 추가).
+  - **의도적으로 잠정 채택한 것(확인 필요로 기록)**: `appVersion`은 그룹웨어에 실제 앱
+    버전 체계가 없어 상수(`'0.1.0-draft'`)로 고정. `fixedBy`는 승인한 검수자의 id를 그대로
+    쓴다(별도 "확정자" 개념 없음). `rbfr_version_recipe`의 `mainDomain`/`reason` 필드는
+    채우지 않는다(원료별 주 역할 판정, 처방 단위 근거 텍스트 추출 모두 추가 조회가 필요해
+    이번 조각 범위 밖으로 뺐다). 단가(`unitPrice`)는 원료마다 가장 최근 `base_date` 1건만
+    사용한다.
+  - **프론트**: `queries/formulaVersions.query.ts` 신규, `RbfrReviewPage.svelte`에 "승인 시
+    Profile 코드" 입력 필드 추가(처방-Profile 연결 컬럼이 없어 임시로 직접 입력받음),
+    `RbfrPage.svelte`에 `FormulaVersionSection.svelte`(확정 버전 이력, 읽기 전용) 신규 연결.
+  - **작업 중 사고와 복구(투명하게 기록)**: `rbfrApi.ts`에 새 함수 2개를 추가하려다 Edit
+    대신 Write 도구를 새 내용으로만 호출해 **기존 33개 함수를 담고 있던 파일 전체를
+    실수로 덮어썼다**(14줄로 축소됨). 즉시 발견 후, 그 파일을 참조하는 다른 파일들
+    (`apiRoutes.ts`의 `ROUTES.RBFR` 전체, 모든 BFF 라우트 파일의 실제 GET/POST/PATCH/PUT
+    메서드, 모든 query/mutation 파일이 호출하는 정확한 함수 시그니처)이 전부 그대로
+    남아 있었으므로 이들을 근거로 35개 함수 전체를 처음부터 다시 작성해 복구했다.
+    복구 후 `npx svelte-check`로 이 파일을 참조하는 모든 곳(30개 이상 파일)에서 타입
+    에러 0건임을 확인해 완전한 복구를 검증했다. 원본 파일을 다시 읽지 않고 덮어써도
+    되는 상황(신규 함수 추가)에서는 Edit을 쓰거나, 최소한 먼저 Read로 최신 내용을
+    확인했어야 한다 — 같은 실수를 반복하지 않도록 기록해 둔다.
+  - **검증**: `npx tsc --noEmit`(csc-groupware) → RBFR 에러 0건. `npx jest domains/rbfr` →
+    **13 suites, 84 tests 전부 통과**. `npx svelte-check`(apps/web/groupware) → RBFR 에러
+    0건(rbfrApi.ts 복구분 포함), 기존 무관 에러 9건 그대로(회귀 없음).
+
 ## 다음 작업
 - MFDS 실제 네트워크 연결 확인(사용자 실제 환경 또는 실 서버에서 재시도) 후, 되면 프론트
   "성분사전 조회" 버튼 연결 + 전체 동기화(F-92) 실행 여부를 다시 논의한다.
@@ -543,6 +721,18 @@ node engine/tests/validation.test.ts
      직접 접근 차단이 전혀 없다.
   - 이 작업은 RBFR 전용이 아니라 **그룹웨어 공용 인증 계층**(`CurrentUser` 타입,
     `+layout.server.ts`)을 건드리므로, 착수 전 다른 개발자와 조율이 특히 필요하다.
+- **8단계 남은 조각**: (1) `rbfr_version_recipe`의 `mainDomain`(원료별 주 역할)/`reason`
+  (근거 텍스트) 필드 채우기 — 지금은 항상 비어 있다. (2) `appVersion`을 실제 앱 버전 체계와
+  연결(지금은 상수 `'0.1.0-draft'`). (3) 처방↔Profile 연결을 실제 컬럼으로 만들기 — 지금은
+  REVIEWER 화면에서 "승인 시 Profile 코드"를 사람이 직접 입력해야 한다(스키마에 이 연결이
+  아예 없음, 근본적으로는 03번 문서 스키마 갭). (4) 랩 넘버(`lab_no`) 채번 규칙(여전히
+  미확정). (5) REVIEWER 권한에 따른 화면 자체의 접근 분기(지금은 URL을 아는 사람 누구나
+  `/tools/rbfr/review`에 들어갈 수 있다, 실제 인가는 여전히 없음 — 사이드바 항목의 "확인
+  필요"와 같은 종류의 gap).
+- **10단계(QA 및 안정화)**: 아직 0%, 위 항목들이 어느 정도 쌓인 뒤 착수.
+- 원료 등록 세부 서브폼의 값 집합(국가/인증종류/무첨가분류)을 `rbfr_code_items` 테이블로
+  옮겨 실제로 관리하는 CRUD(현재는 프론트에 하드코딩된 후보값) — 우선순위 낮음, "확인 필요"
+  절 참고.
 
 ## 완료된 작업
 - 2026-09-05: `개발지침/` 00~07번 문서 초안 작성, `groupware 맞춤 설계용 파일지침.md` 작성,

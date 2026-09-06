@@ -1,10 +1,12 @@
 <script lang="ts">
-	// RBFR 연구: 원료 등록(7단계 두 번째 조각). 02_화면구성.md 탭3 "원료 기본정보" +
-	// "직접 역할 기여도"의 핵심만 우선 연결한다. 성분사전(MFDS) 자동 채움, CAS/인증/규제/무첨가
-	// 등 나머지 세부 서브폼은 이후 조각(9단계 외부연동과도 겹치는 부분은 특히 나중으로 미룬다).
+	// RBFR 연구: 원료 등록(7단계 두 번째 조각 + 세부 서브폼 조각). 02_화면구성.md 탭3 "원료
+	// 기본정보" + "직접 역할 기여도" + CAS/국가별 규제/인증/무첨가 분류 + 원료쌍(조합계수·
+	// 병용금기)을 연결한다. 성분사전(MFDS) 자동 채움은 9단계 외부연동 범위라 여전히 남겨둔다.
 	import { page } from '$app/state';
 	import { createQuery, createMutation } from '@tanstack/svelte-query';
 	import { rbfrService } from '$lib/features/rbfr/services/rbfr.service';
+	import IngredientDetailSections from './components/IngredientDetailSections.svelte';
+	import IngredientPairsSection from './components/IngredientPairsSection.svelte';
 
 	const profileCode = $derived(page.url.searchParams.get('profileCode') ?? 'SKIN');
 	const domainsQuery = createQuery(() => rbfrService.directDomains(profileCode));
@@ -191,4 +193,10 @@
 			<p class="text-sm text-red-600">{registerMutation.error?.message ?? '등록에 실패했습니다.'}</p>
 		{/if}
 	</form>
+
+	{#if registerMutation.isSuccess}
+		<IngredientDetailSections ingredientId={registerMutation.data.ingredientId} />
+	{/if}
+
+	<IngredientPairsSection {profileCode} />
 </div>

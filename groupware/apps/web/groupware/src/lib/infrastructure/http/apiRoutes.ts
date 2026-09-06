@@ -143,5 +143,24 @@ export const ROUTES = {
 			`/api/rbfr/profiles/${encodeURIComponent(profileCode)}/active`,
 		cellMapping: (ruleVersion: string) =>
 			`/api/rbfr/cell-rule-limits/${encodeURIComponent(ruleVersion)}/mapping`,
+		ingredientCas: (ingredientId: number) => `/api/rbfr/ingredients/${ingredientId}/cas`,
+		ingredientRegulations: (ingredientId: number) => `/api/rbfr/ingredients/${ingredientId}/regulations`,
+		ingredientCerts: (ingredientId: number) => `/api/rbfr/ingredients/${ingredientId}/certs`,
+		ingredientFlags: (ingredientId: number) => `/api/rbfr/ingredients/${ingredientId}/flags`,
+		ingredientInteractions: (ingredientId?: number) =>
+			ingredientId !== undefined
+				? `/api/rbfr/ingredient-interactions?ingredientId=${ingredientId}`
+				: '/api/rbfr/ingredient-interactions',
+		ingredientIncompat: (ingredientId?: number) =>
+			ingredientId !== undefined
+				? `/api/rbfr/ingredient-incompat?ingredientId=${ingredientId}`
+				: '/api/rbfr/ingredient-incompat',
+		sensoryStability: (formulaId: number) => `/api/rbfr/formulas/${formulaId}/sensory-stability`,
+		formulaReviews: (formulaId: number) => `/api/rbfr/formulas/${formulaId}/reviews`,
+		PENDING_REVIEWS: '/api/rbfr/reviews/pending',
+		myAssignedReviews: (reviewerId: number) => `/api/rbfr/reviews/mine?reviewerId=${reviewerId}`,
+		pickupReview: (reviewId: number) => `/api/rbfr/reviews/${reviewId}/pickup`,
+		decideReview: (reviewId: number) => `/api/rbfr/reviews/${reviewId}/decide`,
+		formulaVersions: (formulaId: number) => `/api/rbfr/formulas/${formulaId}/versions`,
 	},
 } as const;

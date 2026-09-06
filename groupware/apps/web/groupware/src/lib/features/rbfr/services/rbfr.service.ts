@@ -12,6 +12,27 @@ import { approveCellRuleLimitMutationOptions } from '../mutations/approveCellRul
 import { cellMappingQueryOptions } from '../queries/cellMapping.query';
 import { setCellMappingMutationOptions } from '../mutations/setCellMapping.mutations';
 import { setProfileActiveMutationOptions } from '../mutations/setProfileActive.mutations';
+import { ingredientCasQueryOptions } from '../queries/ingredientCas.query';
+import { ingredientRegulationsQueryOptions } from '../queries/ingredientRegulations.query';
+import { ingredientCertsQueryOptions } from '../queries/ingredientCerts.query';
+import { ingredientFlagsQueryOptions } from '../queries/ingredientFlags.query';
+import { ingredientInteractionsQueryOptions } from '../queries/ingredientInteractions.query';
+import { ingredientIncompatQueryOptions } from '../queries/ingredientIncompat.query';
+import { addIngredientCasMutationOptions } from '../mutations/addIngredientCas.mutations';
+import { addIngredientRegulationMutationOptions } from '../mutations/addIngredientRegulation.mutations';
+import { addIngredientCertMutationOptions } from '../mutations/addIngredientCert.mutations';
+import { addIngredientFlagMutationOptions } from '../mutations/addIngredientFlag.mutations';
+import { addIngredientInteractionMutationOptions } from '../mutations/addIngredientInteraction.mutations';
+import { addIngredientIncompatMutationOptions } from '../mutations/addIngredientIncompat.mutations';
+import { sensoryStabilityQueryOptions } from '../queries/sensoryStability.query';
+import { addSensoryStabilityRecordMutationOptions } from '../mutations/addSensoryStabilityRecord.mutations';
+import { formulaReviewsQueryOptions } from '../queries/formulaReviews.query';
+import { formulaVersionsQueryOptions } from '../queries/formulaVersions.query';
+import { pendingReviewsQueryOptions } from '../queries/pendingReviews.query';
+import { myAssignedReviewsQueryOptions } from '../queries/myAssignedReviews.query';
+import { requestReviewMutationOptions } from '../mutations/requestReview.mutations';
+import { pickupReviewMutationOptions } from '../mutations/pickupReview.mutations';
+import { decideReviewMutationOptions } from '../mutations/decideReview.mutations';
 
 /** 컴포넌트가 호출하는 RBFR 서비스 진입점. */
 export const rbfrService = {
@@ -28,5 +49,26 @@ export const rbfrService = {
 	approveCellRuleLimit: approveCellRuleLimitMutationOptions,
 	cellMapping: cellMappingQueryOptions,
 	setCellMapping: setCellMappingMutationOptions,
-	setProfileActive: setProfileActiveMutationOptions
+	setProfileActive: setProfileActiveMutationOptions,
+	ingredientCas: ingredientCasQueryOptions,
+	ingredientRegulations: ingredientRegulationsQueryOptions,
+	ingredientCerts: ingredientCertsQueryOptions,
+	ingredientFlags: ingredientFlagsQueryOptions,
+	ingredientInteractions: ingredientInteractionsQueryOptions,
+	ingredientIncompat: ingredientIncompatQueryOptions,
+	addIngredientCas: addIngredientCasMutationOptions,
+	addIngredientRegulation: addIngredientRegulationMutationOptions,
+	addIngredientCert: addIngredientCertMutationOptions,
+	addIngredientFlag: addIngredientFlagMutationOptions,
+	addIngredientInteraction: addIngredientInteractionMutationOptions,
+	addIngredientIncompat: addIngredientIncompatMutationOptions,
+	sensoryStability: sensoryStabilityQueryOptions,
+	addSensoryStabilityRecord: addSensoryStabilityRecordMutationOptions,
+	formulaReviews: formulaReviewsQueryOptions,
+	formulaVersions: formulaVersionsQueryOptions,
+	pendingReviews: pendingReviewsQueryOptions,
+	myAssignedReviews: myAssignedReviewsQueryOptions,
+	requestReview: requestReviewMutationOptions,
+	pickupReview: pickupReviewMutationOptions,
+	decideReview: decideReviewMutationOptions
 };

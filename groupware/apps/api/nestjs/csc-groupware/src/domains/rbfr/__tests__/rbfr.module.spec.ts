@@ -6,12 +6,18 @@ import { RBFR_FORMULA_REGISTRATION_PORT } from '../core/application/ports/inboun
 import { RBFR_MFDS_SYNC_PORT } from '../core/application/ports/inbound/rbfr-mfds-sync.port';
 import { RBFR_RECOMMENDATION_PORT } from '../core/application/ports/inbound/rbfr-recommendation.port';
 import { RBFR_SETTINGS_PORT } from '../core/application/ports/inbound/rbfr-settings.port';
+import { RBFR_INGREDIENT_DETAIL_PORT } from '../core/application/ports/inbound/rbfr-ingredient-detail.port';
+import { RBFR_FORMULA_SENSORY_STABILITY_PORT } from '../core/application/ports/inbound/rbfr-formula-sensory-stability.port';
+import { RBFR_FORMULA_REVIEW_PORT } from '../core/application/ports/inbound/rbfr-formula-review.port';
+import { RBFR_FORMULA_VERSION_PORT } from '../core/application/ports/inbound/rbfr-formula-version.port';
 import {
   RbfrFormulaController,
   RbfrIngredientController,
   RbfrMfdsController,
   RbfrRecommendationController,
   RbfrSettingsController,
+  RbfrIngredientDetailController,
+  RbfrReviewController,
 } from '../adapters/inbound/http/controllers';
 
 describe('RbfrModule', () => {
@@ -23,12 +29,18 @@ describe('RbfrModule', () => {
     expect(moduleRef.get(RbfrMfdsController)).toBeInstanceOf(RbfrMfdsController);
     expect(moduleRef.get(RbfrRecommendationController)).toBeInstanceOf(RbfrRecommendationController);
     expect(moduleRef.get(RbfrSettingsController)).toBeInstanceOf(RbfrSettingsController);
+    expect(moduleRef.get(RbfrIngredientDetailController)).toBeInstanceOf(RbfrIngredientDetailController);
+    expect(moduleRef.get(RbfrReviewController)).toBeInstanceOf(RbfrReviewController);
     expect(moduleRef.get(RBFR_FORMULA_CALCULATION_PORT)).toBeDefined();
     expect(moduleRef.get(RBFR_INGREDIENT_REGISTRATION_PORT)).toBeDefined();
     expect(moduleRef.get(RBFR_FORMULA_REGISTRATION_PORT)).toBeDefined();
     expect(moduleRef.get(RBFR_MFDS_SYNC_PORT)).toBeDefined();
     expect(moduleRef.get(RBFR_RECOMMENDATION_PORT)).toBeDefined();
     expect(moduleRef.get(RBFR_SETTINGS_PORT)).toBeDefined();
+    expect(moduleRef.get(RBFR_INGREDIENT_DETAIL_PORT)).toBeDefined();
+    expect(moduleRef.get(RBFR_FORMULA_SENSORY_STABILITY_PORT)).toBeDefined();
+    expect(moduleRef.get(RBFR_FORMULA_REVIEW_PORT)).toBeDefined();
+    expect(moduleRef.get(RBFR_FORMULA_VERSION_PORT)).toBeDefined();
 
     await moduleRef.close();
   });

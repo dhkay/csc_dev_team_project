@@ -5,3 +5,7 @@ export * from './rbfr-formula-registration.types';
 export * from './rbfr-mfds.types';
 export * from './rbfr-recommendation.types';
 export * from './rbfr-settings.types';
+export * from './rbfr-ingredient-detail.types';
+export * from './rbfr-formula-sensory-stability.types';
+export * from './rbfr-formula-review.types';
+export * from './rbfr-formula-version.types';

@@ -6,6 +6,10 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import { rbfrService } from '$lib/features/rbfr/services/rbfr.service';
 	import type { RatioResult } from '$lib/features/rbfr/types';
+	import RoleDomainPentagonChart from './components/RoleDomainPentagonChart.svelte';
+	import FormulaSensoryStabilitySection from './components/FormulaSensoryStabilitySection.svelte';
+	import FormulaReviewSection from './components/FormulaReviewSection.svelte';
+	import FormulaVersionSection from './components/FormulaVersionSection.svelte';
 
 	const formulaId = $derived(Number(page.url.searchParams.get('formulaId') ?? '0'));
 	const profileCode = $derived(page.url.searchParams.get('profileCode') ?? 'SKIN');
@@ -51,6 +55,12 @@
 
 		<section class="mb-6 rounded-lg border border-gray-200 p-5">
 			<h2 class="mb-3 text-sm font-bold text-gray-700">역할 도메인 결과</h2>
+			<div class="mb-4 flex justify-center">
+				<RoleDomainPentagonChart values={result.ratios.map((r) => ({ domainCode: r.domainCode, percent: r.ratioPercent }))} />
+			</div>
+			<p class="mb-3 text-center text-xs text-gray-400">
+				오각형은 비중값(%) 프리뷰다. 승인·확정용 공식 표현은 Cell 변환을 거친 값이다.
+			</p>
 			<div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
 				{#each result.directResults as direct (direct.domainCode)}
 					{@const ratio = ratioFor(direct.domainCode, result.ratios)}
@@ -107,5 +117,9 @@
 				<span>원가(1g): {result.validation.cost.toFixed(1)}원</span>
 			</div>
 		</section>
+
+		<FormulaVersionSection {formulaId} />
+		<FormulaReviewSection {formulaId} />
+		<FormulaSensoryStabilitySection {formulaId} />
 	{/if}
 </div>
