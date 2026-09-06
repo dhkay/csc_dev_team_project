@@ -1,0 +1,34 @@
+{
+  "cursor": "eyJ2IjoxLCJzdiI6MywicyI6eyJ3b3JrX29yZGVyIjoxODQxOTEsInByb2R1Y3Rpb25fcmVjb3JkIjoxODQxOTB9fQ",
+  "hasMore": true,
+  "serverTime": "2026-08-10T02:13:44.512Z",
+  "bootstrap": false,
+  "windowFrom": null,
+  "changes": [
+    {
+      "entity": "production_record",
+      "op": "DELETE",
+      "seq": 184190,
+      "id": 90233,
+      "version": null,
+      "data": null,
+      "deletedAt": "2026-08-10T01:40:02.000Z"
+    },
+    {
+      "entity": "work_order",
+      "op": "UPSERT",
+      "seq": 184191,
+      "id": 4471,
+      "version": 3,
+      "data": {
+        "orderNo": "WO-2608-0031",
+        "itemId": 12,
+        "lineId": 3,
+        "status": "IN_PROGRESS",
+        "plannedQty": "500.0000",
+        "producedQty": "498.0000"
+      },
+      "deletedAt": null
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+[package]
+name = "mes-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Phase 0 의 도메인 로직(outbox 상태 머신, 버전 판정)은 계약 타입을 참조하지 않는다.
+# mes-contracts 의존은 실제로 그 타입을 쓰는 Phase 1 에 추가한다.
+[dependencies]
+serde = { workspace = true }

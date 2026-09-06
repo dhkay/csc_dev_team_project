@@ -1,0 +1,1 @@
+ALTER TABLE "organization_ai_tools" DROP COLUMN "applies_to_all";

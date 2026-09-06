@@ -1,0 +1,11 @@
+{
+  "name": "@csc/api-data-collector",
+  "private": true,
+  "comment": "Python(uv) 서버. 실제 의존성은 pyproject.toml/uv 로 관리. 이 package.json 은 모노레포 dev 오케스트레이션(turbo)용 얇은 래퍼. 포트 8030 = 로컬 dev(도커 dev 스택은 6014 로 퍼블리시).",
+  "scripts": {
+    "dev": "uv run uvicorn app.main:app --reload --port 8030",
+    "start": "uv run uvicorn app.main:app --port 8030",
+    "worker": "uv run arq app.worker.WorkerSettings",
+    "migrate": "uv run alembic upgrade head"
+  }
+}

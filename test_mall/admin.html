@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>메인 배너 관리 | ESCOA Admin</title>
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div class="admin-topbar">
+  <span class="brand" style="display:flex;align-items:center;gap:8px;">
+    <img src="assets/img/logo-black.png" alt="" style="width:28px;height:28px;border-radius:50%;">
+    ESCOA Admin
+  </span>
+  <span class="user">관리자님 (가정)</span>
+</div>
+
+<nav class="admin-sidebar">
+  <a href="#">대시보드</a>
+  <a href="#">상품 관리</a>
+  <a href="#">주문 관리</a>
+  <a href="#">회원 관리</a>
+  <span class="group-label">콘텐츠 관리</span>
+  <a href="admin.html" class="active">메인 배너 관리</a>
+  <a href="#">정책 관리</a>
+</nav>
+
+<main class="admin-content">
+  <div class="breadcrumb"><span>콘텐츠 관리</span><span class="sep">›</span><span class="current">메인 배너 관리</span></div>
+  <h1 class="admin-title">메인 배너 관리</h1>
+  <p class="admin-desc">메인 화면 상단 히어로 배너의 이미지, 연결 URL, 문구를 관리합니다. (가정 화면 — 실제 관리자 정책·권한 체계 확인 필요)</p>
+
+  <div class="admin-card" style="margin-top:8px;">
+    <div class="admin-row">
+      <div class="admin-label">배너 이미지</div>
+      <div>
+        <div class="admin-banner-preview"><img src="assets/img/hero-1.png" alt="배너 이미지"></div>
+        <a class="admin-btn-outline" href="#">이미지 변경</a>
+        <p class="admin-hint">권장 사이즈 480×514px · JPG, PNG (10MB 이하) — 사이즈 값은 확인 필요</p>
+      </div>
+    </div>
+
+    <div class="admin-row">
+      <div class="admin-label">연결 URL</div>
+      <input class="admin-input" type="text" value="https://escoa.co.kr/first100">
+    </div>
+
+    <div class="admin-row">
+      <div class="admin-label">배너 문구 (헤드라인)</div>
+      <textarea class="admin-textarea">피부가 세상과 만나는 첫 100일,
+세가지면 충분합니다</textarea>
+    </div>
+
+    <div class="admin-row">
+      <div class="admin-label">버튼 텍스트</div>
+      <input class="admin-input" style="width:300px;" type="text" value="FIRST 100 보러가기">
+    </div>
+
+    <div class="admin-row">
+      <div class="admin-label">버튼 링크 URL</div>
+      <input class="admin-input" type="text" value="https://escoa.co.kr/first100/program">
+    </div>
+
+    <div class="admin-row">
+      <div class="admin-label">노출 여부</div>
+      <div class="admin-toggle"><span class="switch"></span><span>노출중</span></div>
+    </div>
+
+    <div style="height:1px;background:var(--border-divider);"></div>
+
+    <div class="admin-row">
+      <div class="admin-label">미리보기</div>
+      <div class="admin-preview-card">
+        <img src="assets/img/hero-1.png" alt="">
+        <div class="scrim"></div>
+        <div class="txt">피부가 세상과 만나는 첫 100일,<br>세가지면 충분합니다</div>
+        <div class="cta">FIRST 100 보러가기</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-actions" style="margin-top:20px;">
+    <a class="admin-btn-ghost" href="index.html">취소</a>
+    <a class="admin-btn-solid" href="index.html">저장</a>
+  </div>
+</main>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>

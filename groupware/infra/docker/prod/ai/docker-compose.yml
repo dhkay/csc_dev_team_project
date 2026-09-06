@@ -1,0 +1,163 @@
+# video-ai-server prod 스택: 미디어 파이프라인의 컴퓨트측(무상태 worker).
+# self-hosted 러너(video-ai-server)가 scripts/deploy/deploy.sh 로 빌드/기동한다.
+#
+# 다이어그램(file-storage-architecture)대로 video-ai-server 는 무상태 컴퓨트 존이다:
+#   - video-model(API), video_jobs DB, redis 는 web-server(csc-prod-web) 에 있다.
+#   - 여기서는 worker 만 돌리고, web-server 의 redis/file-service/video-model 에 LAN 으로 접속한다.
+#   - DB/디스크 없음. 무거운 처리(ffmpeg/AI)만 수행.
+#
+# 자원 공유(web-server 와 다른 정책): video-ai-server 는 무상태이므로 staging 과 prod 가 "같은 하드웨어"를
+#   공유한다. 단 별도 compose 프로젝트(csc-staging-ai / csc-prod-ai), 별도 컨테이너, 별도 이미지,
+#   별도 web-server 엔드포인트(prod redis 6380 / staging 6379)로 분리되어 나란히 돈다.
+#   배포 아티팩트, 큐, 연결은 env 분리, 하드웨어만 공유. prod 는 아래 자원 정책으로 우선권을 갖는다:
+#     - cpu_shares 높게(경합 시 우선) + mem_limit 넉넉 + cpus 상한 없음(idle 시 전 코어 버스트).
+#     - staging 은 반대로 캡(best-effort) → prod 지연에 영향 최소화.
+# 변수는 이 디렉터리의 .env(없으면 기본값)에서 읽는다. web-server LAN IP 는 WEB_SERVER_HOST 로 지정.
+name: csc-prod-ai
+
+services:
+  video-model-worker:
+    build:
+      context: ../../../../apps/api/fastapi
+      dockerfile: video-model/Dockerfile
+    image: csc/api-video-model:prod
+    container_name: csc-prod-video-model-worker
+    environment:
+      # 큐/파일/콜백 대상 = web-server(csc-prod-web) LAN. prod redis 호스트 포트 6380.
+      REDIS_URL: redis://:${REDIS_PASSWORD:?prod 필수. PROD_REDIS_PASSWORD 시크릿/서버 .env 에 강한 값 설정}@${WEB_SERVER_HOST:-192.168.0.26}:6380/2
+      FILE_SERVICE_URL: http://${WEB_SERVER_HOST:-192.168.0.26}:9001
+      VIDEO_SERVICE_URL: http://${WEB_SERVER_HOST:-192.168.0.26}:9002
+      # 서버 간 인증(Layer 3): 전 서버 동일 값. worker 신원=video-model.
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # 조직 자격증명(잡 params) 복호화 전용 키(선택): csc-marketing(web 스택)의 JOB_CREDENTIAL_ENC_KEY 와 동일 값이어야 한다.
+      #   미설정이면 SERVICE_TOKEN_SECRET 로 폴백(양쪽 동일 유도라 복호화 일치).
+      JOB_CREDENTIAL_ENC_KEY: ${JOB_CREDENTIAL_ENC_KEY:-}
+      WORKER_SERVICE_NAME: video-model
+      # ffmpeg/미디어 컴퓨트 동시성: prod 우선(staging 보다 높게). 필요 시 .env 로 오버라이드.
+      # LLM 호출(GENERATE/AI) 동시성은 이 값, 아래 cpu/mem 캡과 무관: 전용 세마포어로 별도 제한.
+      WORKER_MAX_JOBS: ${WORKER_MAX_JOBS:-6}
+      # 자체 영상 생성(Wan 2.2 TI2V-5B I2V): 공유 ComfyUI(staging/ai 소유, 같은 GPU)에 csc-ai 네트워크로 HTTP 위임.
+      #   I2V 워크플로는 video-model 이미지에 번들(코드) → 호스트 마운트 불요.
+      COMFYUI_URL: http://csc-ai-comfyui:8188
+      # 외부 영상 벤더 한도(vendor_http.VendorThrottle): 키(조직 프로젝트)별 분당 제출 상한과 429 백오프 횟수.
+      #   한도의 1차 출처는 조직이 API 키와 함께 등록한 값(자격증명 필드 submitsPerMinute)이고, 이 env 는
+      #   그 값이 없는 키에만 쓰이는 기본값이다. Gemini Veo 프리뷰 수치는 문서에 없다(모르면 4).
+      #   0 은 간격 조절 없음(백오프만). 폴링은 한도에 잡히지 않으므로 이 값과 무관.
+      GEMINI_SUBMITS_PER_MINUTE: ${GEMINI_SUBMITS_PER_MINUTE:-4}
+      GEMINI_THROTTLE_MAX_RETRIES: ${GEMINI_THROTTLE_MAX_RETRIES:-4}
+      HIGGSFIELD_SUBMITS_PER_MINUTE: ${HIGGSFIELD_SUBMITS_PER_MINUTE:-0}
+      XAI_SUBMITS_PER_MINUTE: ${XAI_SUBMITS_PER_MINUTE:-0}
+      # 병렬(빠른 생성)에서 한 잡이 동시에 생성 중인 씬 수 상한. 제출 간격은 위 값이 벌린다.
+      COMPOSE_SEGMENT_PARALLELISM: ${COMPOSE_SEGMENT_PARALLELISM:-3}
+    # 자원 정책(공유 하드웨어에서 prod 우선): ffmpeg/미디어 CPU, 메모리 대상.
+    # LLM 은 네트워크 I/O 라 이 캡의 대상이 아니다(별도 동시성 제한).
+    # docker compose up(비-swarm)이 적용하는 레거시 키:
+    #   - cpu_shares: 경합 시 상대 가중치(prod 1024 > staging 256).
+    #   - mem_limit: 하드 상한. cpus 상한은 두지 않아 staging idle 시 전 코어로 버스트.
+    cpu_shares: ${WORKER_CPU_SHARES:-1024}
+    mem_limit: ${WORKER_MEM_LIMIT:-6g}
+    networks: [default, csc-ai]
+    command: ["arq", "app.worker.WorkerSettings"]
+    # arq 내장 health-check(하트비트 키 신선도): restart 는 *크래시*만, hung(소비 정지) 워커는 이걸로 드러난다.
+    #   비-swarm compose 는 unhealthy 자동 재시작 안 함 → 모니터링/autoheal 이 조치(design-external-video-models.md).
+    healthcheck:
+      test: ["CMD", "arq", "app.worker.WorkerSettings", "--check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # LLM 추론 엔진(prod 전용): 기본 배포에서 제외되는 "분리용 시드"(profiles: dedicated-vllm).
+  #   현재 단일 16GB GPU 라 14B 한 인스턴스만 상주 가능 → dev, prod, staging language-model 는 staging/ai 가
+  #   기동하는 공유 csc-ai-vllm(:8010) 하나를 함께 쓴다. 여기서 별도 prod vLLM 을 띄우면 VRAM 부족으로 초기화 실패.
+  #   GPU 증설/분리 후 전용 prod vLLM 으로 갈아탈 때만 활성화:
+  #     ai)  docker compose --profile dedicated-vllm up -d vllm   # 이 서비스(:8000) 기동
+  #     web) prod .env 에 AI_SERVER_VLLM_PORT=8000                # prod language-model 를 이 인스턴스로 전환
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: csc-prod-ai-vllm
+    profiles: ["dedicated-vllm"]
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+      VLLM_MODEL: ${VLLM_MODEL:-/models/qwen3-14b}
+      LANGUAGE_MODEL_CHAT_MODEL: ${LANGUAGE_MODEL_CHAT_MODEL:-qwen3-14b}
+      VLLM_QUANTIZATION: ${VLLM_QUANTIZATION:-}
+      VLLM_LORA_MODULES: ${VLLM_LORA_MODULES:-}
+      VLLM_MAX_LORAS: ${VLLM_MAX_LORAS:-4}
+      VLLM_MAX_LORA_RANK: ${VLLM_MAX_LORA_RANK:-16}
+      VLLM_MAX_MODEL_LEN: ${VLLM_MAX_MODEL_LEN:-8192}
+      VLLM_GPU_UTIL: ${VLLM_GPU_UTIL:-0.90}
+    # sh -c 로 조건부 플래그(양자화/LoRA 미지정 시 생략). compose 가 $ 를 먹지 않게 $$ 로 escape.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        exec python3 -m vllm.entrypoints.openai.api_server
+        --model "$$VLLM_MODEL" --served-model-name "$$LANGUAGE_MODEL_CHAT_MODEL"
+        $${VLLM_QUANTIZATION:+--quantization "$$VLLM_QUANTIZATION"}
+        --enable-lora --max-loras "$$VLLM_MAX_LORAS" --max-lora-rank "$$VLLM_MAX_LORA_RANK"
+        $${VLLM_LORA_MODULES:+--lora-modules $$VLLM_LORA_MODULES}
+        --max-model-len "$$VLLM_MAX_MODEL_LEN" --gpu-memory-utilization "$$VLLM_GPU_UTIL"
+    volumes:
+      # 직접 올린 모델 가중치 / LoRA 어댑터 마운트(읽기 전용).
+      - ${AI_MODELS_DIR:-/home/csc/ai-models/prod}:/models:ro
+      - ${AI_LORAS_DIR:-/home/csc/ai-loras/prod}:/loras:ro
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # LAN 노출: web-server 의 language-model 가 호출(ufw 로 web-server IP 만 허용).
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  # 호스트 시스템 지표(CPU/GPU/VRAM/RAM) 수집 에이전트: 서버 모니터링 대시보드(ai 호스트, GPU).
+  #   vllm 과 동일한 nvidia 런타임으로 libnvidia-ml 주입(pynvml, CUDA 툴킷 불필요).
+  #   web-server 의 control-tower 가 LAN:8090 으로 호출. ufw 로 web-server IP 만 8090 허용(vllm 8000 과 동일 정책).
+  metrics-agent:
+    build:
+      context: ../../../../apps/api/fastapi
+      dockerfile: metrics-agent/Dockerfile
+    image: csc/api-metrics-agent:prod
+    container_name: csc-prod-ai-metrics-agent
+    pid: "host"
+    environment:
+      APP_ENV: prod
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # 포털(scalar-gateway)은 web 호스트에 있어 LAN 너머 이 인스턴스에 도달하지 못한다.
+      # 따라서 config 기본값(csc-control-tower,scalar-gateway)보다 좁게 유지한다.
+      ALLOWED_SERVICES: csc-control-tower
+      HOST_ID: prod-ai
+      HOST_LABEL: "AI Server (prod)"
+      HOST_ROLE: ai
+      HOST_PROC: /host/proc
+      DISK_PATH: /host/root
+      HOST_SYS: /host/sys
+      NVIDIA_VISIBLE_DEVICES: all
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ports:
+      - "${METRICS_AGENT_PORT:-8090}:8000"
+    restart: unless-stopped
+
+networks:
+  # 기본(prod/ai) 네트워크.
+  default:
+  # 공유 ComfyUI(csc-ai-comfyui, staging/ai 소유) 접근용 외부 네트워크: video-ai-server 에서 미리 생성.
+  csc-ai:
+    external: true
+    name: csc-ai

@@ -1,0 +1,19 @@
+# 이 저장소(csc_dev_team_project)에 포함하지 않는 최상위 폴더
+# CSC_dev: GitHub 연동 테스트용으로 임시로 만든 폴더, 실제 프로젝트 내용 아님
+/CSC_dev/
+# _archive: 예전 백업 스냅샷 통짜 복사본(csc_project-archive-v1.0.0/v1.5.0), 이번 통합 대상 아님
+/_archive/
+
+# OS/도구 잡파일 (모든 하위 폴더 공통)
+*Zone.Identifier
+.DS_Store
+Thumbs.db
+node_modules/
+*.log
+
+# Claude Code 세션 내부 파일(프로젝트 콘텐츠 아님), 빈 기본 docroot
+/.claude/
+/html/
+
+# 그 외 groupware/rbfr/test_mall 내부 세부 제외 규칙은 각 폴더 자체의 .gitignore가 담당한다
+# (git은 하위 디렉터리의 .gitignore도 함께 적용하므로 여기서 중복 작성하지 않는다).

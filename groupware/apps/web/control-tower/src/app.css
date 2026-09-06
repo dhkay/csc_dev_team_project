@@ -1,0 +1,6 @@
+@import 'tailwindcss';
+
+/* 브랜드 컬러 토큰: 위젯에서 bg-brand / text-brand / bg-brand/10 등으로 사용 */
+@theme {
+  --color-brand: #1868db;
+}

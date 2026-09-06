@@ -1,0 +1,8 @@
+# AI 챗봇(ai-chat) 시스템 프롬프트 조립.
+# compose 순서대로 .md 조각을 연결(빈 줄 구분)해 system 메시지로 쓴다. 경로는 prompts/ 루트 기준.
+id = "chat-assistant"
+locale = "ko"
+version = 1
+compose = [
+  "shared/persona/assistant.ko.md",
+]

@@ -1,0 +1,1 @@
+ALTER TABLE "marketing_common_assets" DROP COLUMN "attributes";

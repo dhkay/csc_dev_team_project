@@ -1,0 +1,122 @@
+name: release-desktop
+
+# 현장 PC 앱(Tauri) 릴리스. 컨테이너 배포(deploy-*.yml)와 완전히 다른 파이프라인이다.
+#
+# 태그 트리거인 이유: Rust 빌드는 캐시가 있어도 5분에서 15분이 걸린다. 브랜치 push 마다 돌리면
+# checks.yml 의 반응성이 무너진다. PR 단계 안전망은 checks.yml 의 desktop-rust 잡(리눅스,
+# 라이브러리 crate 만)이 담당한다.
+#
+# 잡을 둘로 나눈 이유: Windows 빌드는 GitHub-hosted 러너가 필요한데, 그 러너는 LAN 안의
+# web-server 에 SSH 로 닿을 수 없다. 반대로 self-hosted 러너는 리눅스뿐이라 Windows 빌드를
+# 못 한다. 그래서 build(GitHub-hosted) -> 아티팩트 -> publish(self-hosted) 로 건넨다.
+#
+# 이 저장소에서 유료 자원을 쓰는 유일한 곳이다
+# 다른 워크플로(checks, deploy-*)는 전부 self-hosted 라 Actions 분을 쓰지 않는다. 여기만
+# windows-latest 라 사용량 한도에 걸리면 이 잡이 "not started" 로 죽고 릴리스가 나가지 못한다.
+# 태그를 밀 때만 도니 평소 소비는 없지만, 릴리스 직전에 한도를 확인해야 한다.
+#
+# 무료로 만들려면 Windows self-hosted 러너가 필요하다. 다만 Tauri Windows 번들에는 MSVC
+# 링커(Visual Studio Build Tools)와 WebView2 가 그 호스트에 있어야 해서 준비 비용이 작지 않다.
+# 리눅스 크로스컴파일은 Tauri 번들링에서 신뢰할 수 없어 선택지가 아니다.
+# 그때까지의 대안: 로컬에서 `pnpm --filter "@csc/desktop-mes" bundle` 로 만들어 수동 배치한다
+# (publish 잡의 두 스텝이 하는 일이 그것뿐이다). 절차: docs/runbooks/mes-desktop-release.md
+on:
+  push:
+    tags: ['mes-desktop-v*']
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: '배포 채널'
+        required: true
+        default: dev
+        type: choice
+        options: [dev, staging, prod]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: 데스크톱 번들 빌드 (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # 레포 루트에 Cargo.toml 이 없다. 명시하지 않으면 캐시가 통째로 비활성되어
+          # 매 릴리스가 콜드 빌드가 된다.
+          workspaces: apps/desktop/mes/src-tauri
+      - run: pnpm install --frozen-lockfile
+      # `<app>...` = 앱 + 의존 워크스페이스 패키지(위상순서). @csc/mes-contracts 가 dist 로
+      # 참조되므로 먼저 빌드되어야 한다.
+      - name: build frontend
+        run: pnpm --filter "@csc/desktop-mes..." build
+      - name: bundle
+        run: pnpm --filter "@csc/desktop-mes" bundle
+        env:
+          # 업데이터 서명(minisign). 코드 서명(Authenticode)과 다른 것이다.
+          #   - 업데이터 서명: Tauri updater 가 번들 무결성을 검증. 없으면 자동 업데이트 자체가
+          #     성립하지 않는다.
+          #   - 코드 서명: Windows SmartScreen 경고 제거. 인증서 조달 리드타임이 있어 Phase 2.
+          # 비밀키를 잃으면 기존 설치본 전체가 영구히 업데이트 불가가 된다.
+          # 공개키는 tauri.conf.json 에 커밋하고 비밀키는 Secrets + 오프라인 백업 2벌.
+          # 절차: docs/runbooks/mes-desktop-release.md
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      # 보관 기간을 줄인다. 아티팩트는 분이 아니라 스토리지 쿼터를 먹고, 기본 90일이면 릴리스마다
+      #   번들이 쌓여 무료 한도를 잠식한다. 아래 publish 잡이 같은 런에서 받아 서버에 배치하므로
+      #   GitHub 에 오래 둘 이유가 없다.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mes-desktop-bundle
+          path: |
+            apps/desktop/mes/src-tauri/target/release/bundle/**
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    name: 릴리스 배치 (web-server)
+    needs: build
+    # GitHub-hosted 러너는 LAN 서버에 닿지 않는다. 배치는 반드시 self-hosted 에서.
+    runs-on: [self-hosted, web-server]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: mes-desktop-bundle
+          path: /tmp/mes-desktop-bundle
+      - name: 릴리스 디렉터리에 배치
+        env:
+          CHANNEL: ${{ github.event.inputs.channel || 'dev' }}
+          RELEASE_ROOT: ${{ vars.DESKTOP_RELEASE_DIR || '/home/csc/Releases' }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#mes-desktop-v}"
+          target="$RELEASE_ROOT/$CHANNEL/$version"
+          mkdir -p "$target"
+          cp -r /tmp/mes-desktop-bundle/. "$target/"
+          echo "배치 완료: $target"
+      # latest.json 은 원자적으로 교체한다. 제자리에서 쓰면 그 순간 폴링한 현장 PC 가
+      # 잘린 JSON 을 받는다. 임시 파일에 쓰고 mv 로 갈아끼운다.
+      #
+      # 롤백 주의: Tauri updater 는 다운그레이드를 하지 않는다. latest.json 을 되돌리면
+      # 아직 업데이트 안 한 PC 만 고정되고, 이미 올라간 PC 에는 아무 일도 일어나지 않는다.
+      # 실질 절차는 런북 참고(확산 중단 + 버전만 올린 hotfix 재릴리스).
+      - name: latest.json 갱신 (원자적 교체)
+        env:
+          CHANNEL: ${{ github.event.inputs.channel || 'dev' }}
+          RELEASE_ROOT: ${{ vars.DESKTOP_RELEASE_DIR || '/home/csc/Releases' }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#mes-desktop-v}"
+          manifest="$RELEASE_ROOT/$CHANNEL/latest.json"
+          tmp="$(mktemp)"
+          printf '{"version":"%s","pub_date":"%s","notes":""}\n' \
+            "$version" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$tmp"
+          mv "$tmp" "$manifest"
+          echo "매니페스트 갱신: $manifest ($version)"

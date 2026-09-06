@@ -1,0 +1,1 @@
+ALTER TABLE "marketing_common_assets" ADD COLUMN "prompt_en" text DEFAULT '' NOT NULL;

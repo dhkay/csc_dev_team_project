@@ -1,0 +1,96 @@
+{
+  "name": "@csc/database",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./groupwaredb": {
+      "import": {
+        "types": "./dist/groupwaredb/index.d.ts",
+        "default": "./dist/groupwaredb/index.js"
+      },
+      "require": {
+        "types": "./dist/groupwaredb/index.d.cts",
+        "default": "./dist/groupwaredb/index.cjs"
+      }
+    },
+    "./userdb": {
+      "import": {
+        "types": "./dist/userdb/index.d.ts",
+        "default": "./dist/userdb/index.js"
+      },
+      "require": {
+        "types": "./dist/userdb/index.d.cts",
+        "default": "./dist/userdb/index.cjs"
+      }
+    },
+    "./controltowerdb": {
+      "import": {
+        "types": "./dist/controltowerdb/index.d.ts",
+        "default": "./dist/controltowerdb/index.js"
+      },
+      "require": {
+        "types": "./dist/controltowerdb/index.d.cts",
+        "default": "./dist/controltowerdb/index.cjs"
+      }
+    },
+    "./marketingdb": {
+      "import": {
+        "types": "./dist/marketingdb/index.d.ts",
+        "default": "./dist/marketingdb/index.js"
+      },
+      "require": {
+        "types": "./dist/marketingdb/index.d.cts",
+        "default": "./dist/marketingdb/index.cjs"
+      }
+    },
+    "./mesdb": {
+      "import": {
+        "types": "./dist/mesdb/index.d.ts",
+        "default": "./dist/mesdb/index.js"
+      },
+      "require": {
+        "types": "./dist/mesdb/index.d.cts",
+        "default": "./dist/mesdb/index.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "drizzle:generate:user": "drizzle-kit generate --config=src/userdb/drizzle.config.ts",
+    "drizzle:migrate:user": "drizzle-kit migrate --config=src/userdb/drizzle.config.ts",
+    "drizzle:generate:groupware": "drizzle-kit generate --config=src/groupwaredb/drizzle.config.ts",
+    "drizzle:migrate:groupware": "drizzle-kit migrate --config=src/groupwaredb/drizzle.config.ts",
+    "drizzle:generate:controltower": "drizzle-kit generate --config=src/controltowerdb/drizzle.config.ts",
+    "drizzle:migrate:controltower": "drizzle-kit migrate --config=src/controltowerdb/drizzle.config.ts",
+    "drizzle:generate:marketing": "drizzle-kit generate --config=src/marketingdb/drizzle.config.ts",
+    "drizzle:migrate:marketing": "drizzle-kit migrate --config=src/marketingdb/drizzle.config.ts",
+    "drizzle:generate:mes": "drizzle-kit generate --config=src/mesdb/drizzle.config.ts",
+    "drizzle:migrate:mes": "drizzle-kit migrate --config=src/mesdb/drizzle.config.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.38.3",
+    "postgres": "^3.4.5",
+    "@csc/saga": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "drizzle-kit": "^0.30.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.0"
+  }
+}

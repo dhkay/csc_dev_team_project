@@ -1,0 +1,3 @@
+.dev-pids
+# dev 감시자의 단일 인스턴스 락(heartbeat). 두 번째 기동이 먼저 것을 죽이지 않게 한다.
+.dev-lock

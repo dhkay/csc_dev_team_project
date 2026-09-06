@@ -1,0 +1,1 @@
+ALTER TABLE "marketing_common_assets" ADD COLUMN "labels" jsonb DEFAULT '[]'::jsonb NOT NULL;

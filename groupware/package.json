@@ -1,0 +1,43 @@
+{
+  "name": "csc-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:check": "node scripts/dev.mjs --check",
+    "dev:apps": "turbo run dev --concurrency=15 --continue=always --summarize",
+    "dev:mes": "pnpm --filter \"@csc/desktop-mes\" dev:desktop",
+    "build": "turbo run build",
+    "lint": "node scripts/check-all.mjs && turbo run lint",
+    "test": "turbo run test",
+    "check": "turbo run check",
+    "check:endpoint-ids": "node scripts/check-endpoint-ids.mjs",
+    "check:bff-routes": "node scripts/check-bff-routes.mjs",
+    "check:marketing-version-scope": "node scripts/check-marketing-version-scope.mjs",
+    "check:mes-contracts": "node scripts/check-mes-contracts.mjs",
+    "kill:all": "node scripts/kill.mjs",
+    "kill:check": "node scripts/kill.mjs --dry-run",
+    "kill:infra": "node scripts/kill.mjs infra",
+    "kill:api": "node scripts/kill.mjs api",
+    "kill:web": "node scripts/kill.mjs web",
+    "kill:scalar-gateway": "node scripts/kill.mjs scalar-gateway",
+    "kill:groupware": "node scripts/kill.mjs csc-groupware",
+    "kill:control-tower": "node scripts/kill.mjs csc-control-tower",
+    "kill:user": "node scripts/kill.mjs user",
+    "kill:marketing": "node scripts/kill.mjs csc-marketing",
+    "kill:mes": "node scripts/kill.mjs csc-mes",
+    "kill:mes-desktop": "node scripts/kill.mjs mes-desktop",
+    "kill:video-model": "node scripts/kill.mjs video-model",
+    "kill:language-model": "node scripts/kill.mjs language-model",
+    "kill:file-upload": "node scripts/kill.mjs file-upload",
+    "kill:metrics-agent": "node scripts/kill.mjs metrics-agent",
+    "kill:log-server": "node scripts/kill.mjs log-server",
+    "kill:data-collector": "node scripts/kill.mjs data-collector",
+    "kill:web-groupware": "node scripts/kill.mjs web-groupware",
+    "kill:web-control-tower": "node scripts/kill.mjs web-control-tower"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0"
+  }
+}

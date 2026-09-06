@@ -1,0 +1,8 @@
+# OS/도구가 만드는 잡파일
+*Zone.Identifier
+.DS_Store
+Thumbs.db
+
+# 향후 engine/에 의존성이 생길 경우 대비
+node_modules/
+*.log

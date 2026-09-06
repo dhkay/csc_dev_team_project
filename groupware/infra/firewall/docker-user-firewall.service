@@ -1,0 +1,15 @@
+[Unit]
+Description=Restrict cross-host Docker published ports (DOCKER-USER source filtering)
+Documentation=file:///usr/local/sbin/docker-user-rules.sh
+# 도커가 기동/재시작하면 DOCKER-USER 규칙이 초기화되므로, 그 뒤에 재적용한다.
+After=docker.service
+Requires=docker.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/docker-user-rules.sh apply
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

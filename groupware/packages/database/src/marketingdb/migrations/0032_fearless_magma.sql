@@ -1,0 +1,1 @@
+ALTER TABLE "marketing_video_projects" ADD COLUMN "resolution" varchar(16) DEFAULT '720p' NOT NULL;

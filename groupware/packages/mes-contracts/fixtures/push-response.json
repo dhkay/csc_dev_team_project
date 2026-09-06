@@ -1,0 +1,31 @@
+{
+  "serverTime": "2026-08-10T02:13:44.512Z",
+  "clockSkewMs": 4511,
+  "cursorHint": "eyJ2IjoxLCJzdiI6MywicyI6eyJ3b3JrX29yZGVyIjoxODQyMDV9fQ",
+  "results": [
+    {
+      "clientOpId": "018f3c2a-0000-7000-8000-000000000a01",
+      "status": "APPLIED",
+      "entity": "work_order",
+      "serverId": 4471,
+      "serverSeq": 184205,
+      "version": 3,
+      "reason": null,
+      "retryable": false,
+      "message": null,
+      "details": null
+    },
+    {
+      "clientOpId": "018f3c2a-0000-7000-8000-000000000a02",
+      "status": "REJECTED",
+      "entity": "production_record",
+      "serverId": null,
+      "serverSeq": null,
+      "version": null,
+      "reason": "QTY_EXCEEDS_PLAN",
+      "retryable": false,
+      "message": "지시 수량을 초과했습니다.",
+      "details": { "plannedQty": 500, "producedQty": 498, "requestedQty": 120 }
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+[project]
+name = "video-model"
+version = "0.0.0"
+description = "마케팅 영상 제작 자동화 API: FastAPI 헥사고날 (영상 처리/FFmpeg, uv 관리)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "sqlalchemy>=2.0",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
+    "arq>=0.26",       # Redis 큐(작업 전달) + worker 런타임
+    "httpx>=0.27",     # worker → file-service / 콜백 HTTP
+    "edge-tts>=6.1",   # COMPOSE 씬 나레이션 TTS(Microsoft Edge 온라인, 키 불필요, 한국어 음성)
+    "csc-net-utils[http]",  # 서버 간 토큰/미들웨어/HTTP 클라이언트 공유 (워크스페이스)
+    "cryptography>=49.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.uv.sources]
+csc-net-utils = { workspace = true }
+
+# uv 로 관리: `uv add <pkg>` / `uv sync` / `uv run uvicorn app.main:app --reload`
+# 락파일(uv.lock)은 `uv sync` 가 생성한다.
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# 앱 소스는 __init__.py 없이 PEP 420 네임스페이스 패키지로 둔다(빈 마커 제거). pytest 가 이를 인식하고
+# full-path 로 import 하도록 아래 3줄이 필요하다. pythonpath="." 로 app 을 네임스페이스 패키지로 import.
+consider_namespace_packages = true
+addopts = "--import-mode=importlib"
+pythonpath = ["."]

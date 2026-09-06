@@ -1,0 +1,53 @@
+# Tauri 앱 crate 이자 Rust 워크스페이스 루트.
+#
+# Tauri CLI 와 tauri-build 는 `src-tauri/` 바로 아래에서 Cargo.toml 과 tauri.conf.json 을
+# 찾는다. 그래서 앱 패키지를 여기 두고, 도메인 crate 만 crates/ 하위로 뺀다.
+#
+# crate 를 쪼갠 이유: Rust 를 본격 활용하기로 했으므로 mes-core 와 mes-sync 가 커진다.
+# Tauri 에 의존하지 않는 별도 crate 로 두면 Tauri 없이 cargo test 로 돌고(CI 가 Linux
+# 러너에서 검사할 수 있다), 나중에 태블릿이나 서버 사이드 재사용이 생겼을 때 crate 이동이
+# 기계적으로 끝난다.
+#
+# 의존 방향은 한쪽이다.
+#   mes-app(여기) -> mes-sync / mes-store -> mes-core -> mes-contracts
+# mes-core 와 mes-contracts 는 IO 를 모른다(순수). 이 규칙이 깨지면 테스트가 느려지고
+# 결국 아무도 안 짜게 된다.
+
+[workspace]
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.77"
+license = "UNLICENSED"
+publish = false
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+
+[package]
+name = "mes-app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[lib]
+name = "mes_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+# Phase 0 은 설정 로더와 저장소 조회만 노출하므로 mes-store 만 쓴다.
+# mes-core 와 mes-sync 는 동기화 워커를 붙이는 Phase 1 에서 추가한다. 워크스페이스
+# 멤버라 지금도 cargo test 로 함께 검증된다(의존을 미리 달 이유가 없다).
+[dependencies]
+mes-store = { path = "crates/mes-store" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tauri = { version = "2", features = [] }

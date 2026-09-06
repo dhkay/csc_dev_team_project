@@ -1,0 +1,12 @@
+[package]
+name = "mes-sync"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Phase 0 은 연결 판정 로직(순수)만 담는다. HTTP 클라이언트(reqwest)는 실제 pull/push 를
+# 구현하는 Phase 1 에서 추가한다. 지금 달면 컴파일 시간만 늘고 쓰지도 않는다.
+[dependencies]
+serde = { workspace = true }

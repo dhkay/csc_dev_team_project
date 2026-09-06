@@ -1,0 +1,43 @@
+{
+  "compilerOptions": {
+    "module": "node16",
+    // ambient(전역) 타입을 명시한다. 자동 탐색에 맡기면 spec 이 프로젝트 밖으로 취급될 때
+    // 에디터가 jest 전역(describe/it/expect)을 모른다고 표시한다. 모듈 타입(@types/express 등)은
+    // import 로 해석되므로 여기 없어도 된다.
+    "types": ["node", "jest"],
+    "target": "ES2021",
+    "moduleResolution": "node16",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": true,
+    // DTO 는 프레임워크가 채운다: class-validator DTO 의 필드는 요청 본문을 검증하며 대입되므로
+    // 선언 시점에 초기값이 없다. 이 플래그를 켜면 그 DTO 필드 전부가 오류가 되는데, 이 코드베이스에서
+    // 그 외에 걸리는 것은 없다(도메인 엔티티는 interface, 서비스는 생성자 주입). 즉 실제 결함은
+    // 못 잡고 오탐만 만든다. strict 를 켜지 않아 기본값으로도 꺼지지만, **명시하지 않으면 편집기가
+    // 다른 기본값을 쓸 때 코드가 아닌 설정 때문에 오류로 표시된다**(실제로 그렇게 보고됐다).
+    "strictPropertyInitialization": false,
+    "noImplicitAny": true,
+    "strictBindCallApply": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  // spec 을 제외하지 않는다: 제외하면 tsc(typecheck)가 건너뛰어 타입 오류가 CI 를 통과하고,
+  // 에디터도 이 파일들을 프로젝트 밖으로 봐서 jest 전역(describe/expect)을 모른다고 표시한다.
+  // 빌드 산출물에서 빼는 일은 tsconfig.build.json 이 맡는다(nest build 가 그 파일을 쓴다).
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

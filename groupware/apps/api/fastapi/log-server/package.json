@@ -1,0 +1,10 @@
+{
+  "name": "@csc/api-log-server",
+  "private": true,
+  "scripts": {
+    "dev": "uv run uvicorn app.main:app --reload --port 8020",
+    "start": "uv run uvicorn app.main:app --port 8020",
+    "worker": "uv run python -m app.worker",
+    "migrate": "uv run python clickhouse/migrate.py"
+  }
+}

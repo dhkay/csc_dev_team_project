@@ -1,0 +1,2 @@
+ALTER TABLE "marketing_saved_plans" ADD COLUMN "use_narration" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "marketing_video_projects" ADD COLUMN "use_narration" boolean DEFAULT true NOT NULL;

@@ -1,0 +1,37 @@
+{
+  "deviceId": "term-lineA-01",
+  "clientTime": "2026-08-10T02:13:40.001Z",
+  "operations": [
+    {
+      "clientOpId": "018f3c2a-0000-7000-8000-000000000a01",
+      "clientSeq": 1204,
+      "entity": "work_order",
+      "op": "INTENT",
+      "targetId": 4471,
+      "baseVersion": 2,
+      "intent": "START",
+      "workerId": 88,
+      "occurredAt": "2026-08-10T01:02:00.000Z",
+      "payload": {}
+    },
+    {
+      "clientOpId": "018f3c2a-0000-7000-8000-000000000a02",
+      "clientSeq": 1205,
+      "entity": "production_record",
+      "op": "CREATE",
+      "targetId": null,
+      "baseVersion": null,
+      "intent": null,
+      "workerId": 88,
+      "occurredAt": "2026-08-10T01:31:00.000Z",
+      "payload": {
+        "workOrderId": 4471,
+        "processId": 2,
+        "equipmentId": 9,
+        "goodQty": 120,
+        "defectQty": 3,
+        "defects": [{ "defectCodeId": 5, "qty": 3 }]
+      }
+    }
+  ]
+}

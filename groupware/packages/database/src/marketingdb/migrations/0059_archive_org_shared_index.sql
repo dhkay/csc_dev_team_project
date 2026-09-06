@@ -1,0 +1,1 @@
+CREATE INDEX "marketing_video_finals_org_location_version_idx" ON "marketing_video_finals" USING btree ("organization_id","location","version_mode");

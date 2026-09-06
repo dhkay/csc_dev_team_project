@@ -1,0 +1,34 @@
+[project]
+name = "metrics-agent"
+version = "0.0.0"
+description = "호스트 시스템 지표(CPU/GPU/VRAM/RAM) 수집 경량 에이전트: FastAPI 헥사고날 (호스트당 1개, uv 관리)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "psutil>=6",            # CPU/RAM 등 호스트 시스템 지표(컨테이너에서 HOST_PROC 로 보정)
+    "nvidia-ml-py>=12",     # pynvml: GPU/VRAM(NVIDIA 드라이버의 libnvidia-ml 만 필요, CUDA 툴킷 불필요)
+    "csc-net-utils",        # 서버 간 토큰/미들웨어 공유 (워크스페이스, 아웃바운드 없음 → [http] 불필요)
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.uv.sources]
+csc-net-utils = { workspace = true }
+
+# uv 로 관리: `uv add <pkg>` / `uv sync` / `uv run uvicorn app.main:app --reload`
+# 락파일(uv.lock)은 워크스페이스 루트(apps/api/fastapi/uv.lock) 하나로 공유된다.
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# 앱 소스는 __init__.py 없이 PEP 420 네임스페이스 패키지로 둔다(빈 마커 제거). pytest 가 이를 인식하고
+# full-path 로 import 하도록 아래 3줄이 필요하다. pythonpath="." 로 app 을 네임스페이스 패키지로 import.
+consider_namespace_packages = true
+addopts = "--import-mode=importlib"
+pythonpath = ["."]

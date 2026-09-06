@@ -1,0 +1,1 @@
+DROP TABLE "marketing_channel_keyword_links" CASCADE;

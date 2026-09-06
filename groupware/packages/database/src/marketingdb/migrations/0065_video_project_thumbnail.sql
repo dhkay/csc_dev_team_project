@@ -1,0 +1,1 @@
+ALTER TABLE "marketing_video_projects" ADD COLUMN "thumbnail_upload_id" varchar(200);

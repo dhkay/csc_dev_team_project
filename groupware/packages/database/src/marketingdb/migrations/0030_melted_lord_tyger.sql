@@ -1,0 +1,1 @@
+ALTER TABLE "marketing_asset_sets" ADD COLUMN "overlays" jsonb;

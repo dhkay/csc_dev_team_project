@@ -1,0 +1,1 @@
+ALTER TABLE "marketing_video_finals" ADD COLUMN "version_mode" varchar(16);

@@ -1,0 +1,114 @@
+# video-ai-server DEV 스택: 미디어 파이프라인의 컴퓨트측(무상태 worker).
+#   GPU/ffmpeg/AI 처리는 여기(video-ai-server)서 수행 → 개발자 노트북 사양 무관.
+#   web-server 의 csc-dev-web(redis/file-service/video-model)에 LAN 으로 접속한다.
+#   반복 속도: 이미지 재빌드 없이 호스트 app/ 를 bind-mount + `arq --watch`(코드 수정 시 자동 재시작).
+#   DB/디스크 없음(무상태). video_jobs 는 web-server dev DB, 파일은 file-service 가 단독 관리.
+#   LLM 추론은 자체 vLLM 없이 staging/ai 의 공유 csc-ai-vllm(:8010)을 공유한다(단일 GPU). 폴백=ollama/stub.
+name: csc-dev-ai
+
+services:
+  video-model-worker:
+    build:
+      context: ../../../../apps/api/fastapi/video-model
+      dockerfile: Dockerfile
+    image: csc/api-video-model:dev
+    container_name: csc-dev-video-model-worker
+    environment:
+      # 큐/파일/콜백 대상 = web-server dev 스택(LAN). WEB_SERVER_HOST 로 오버라이드.
+      REDIS_URL: redis://${WEB_SERVER_HOST:-192.168.0.26}:6379/2
+      FILE_SERVICE_URL: http://${WEB_SERVER_HOST:-192.168.0.26}:6011
+      VIDEO_SERVICE_URL: http://${WEB_SERVER_HOST:-192.168.0.26}:6012
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:-dev-only-service-secret}
+      # 조직 자격증명(잡 params) 복호화 전용 키(선택): csc-marketing(web 스택)의 JOB_CREDENTIAL_ENC_KEY 와 동일 값.
+      #   미설정이면 SERVICE_TOKEN_SECRET 로 폴백(양쪽 동일 유도라 복호화 일치).
+      JOB_CREDENTIAL_ENC_KEY: ${JOB_CREDENTIAL_ENC_KEY:-}
+      WORKER_SERVICE_NAME: video-model
+    volumes:
+      # bind-mount: 호스트 app/ 소스만(이미지의 /app/.venv 보존). arq --watch 가 변경 시 재시작.
+      - ../../../../apps/api/fastapi/video-model/app:/app/app
+    command: ["arq", "app.worker.WorkerSettings", "--watch", "/app/app"]
+    # arq 내장 health-check(하트비트 키 신선도): restart:unless-stopped 는 *크래시*만 잡고, 살아서 소비 못 하는
+    #   *hung* 워커(event-loop 블록 등)는 못 잡는다. 이 healthcheck 가 unhealthy 로 드러낸다.
+    #   (비-swarm compose 는 unhealthy 를 자동 재시작하지 않음 → 모니터링/autoheal 이 조치. design-external-video-models.md 참고.)
+    healthcheck:
+      test: ["CMD", "arq", "app.worker.WorkerSettings", "--check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # LLM 추론(dev): dev 는 자체 vLLM 을 두지 않는다. staging/ai 가 소유한 공유 csc-ai-vllm(:8010)을 함께 쓴다.
+  #   단일 16GB GPU 라 dev 전용 vLLM 을 staging 공유본과 동시에 못 띄우기 때문(그래서 env-중립 이름으로 공유).
+  #   붙는 법: dev/web 의 api-language-model 에 INFERENCE_ENGINE=vllm +
+  #     INFERENCE_BASE_URL=http://<video-ai-server>:8010/v1 (dev/web 이 web-server 에서 돌아야 방화벽 통과. 8010 은 web-server IP 만 허용).
+  #   오프라인/로컬 실험 폴백 = 아래 ollama, 또는 language-model INFERENCE_ENGINE=stub(에코).
+  #   별도 로컬 GPU 로 dev 전용 모델을 실험하려면 여기 임시 vLLM 을 추가하되 공유본과 GPU 를 동시 점유하지 않게 주의.
+
+  # LLM 추론 엔진(dev, Windows/WSL2 권장): Ollama(OpenAI 호환 /v1).
+  #   vLLM 은 WSL2 에서 UVA/pin_memory 이슈로 막히므로 로컬은 Ollama 로 붙는다.
+  #   (운영 video-ai-server 는 네이티브 리눅스라 vLLM 유지: 엔진만 다르고 language-model 어댑터는 동일.)
+  #   최초 1회 모델 pull:  docker exec csc-dev-ai-ollama ollama pull qwen3:4b-instruct-2507-q4_K_M
+  #   ※ 사고(<think>) 안 하는 Instruct 모델(2507): 챗봇에 적합(바로 답).
+  #   language-model(dev) 는 INFERENCE_ENGINE=ollama, INFERENCE_BASE_URL=http://localhost:11434/v1,
+  #                 CHAT_SERVED_MODEL_NAME=qwen3:4b-instruct-2507-q4_K_M 로 붙는다.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: csc-dev-ai-ollama
+    volumes:
+      - ollama_models:/root/.ollama
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ports:
+      - "11434:11434"
+    restart: unless-stopped
+
+  # 호스트 시스템 지표(CPU/GPU/VRAM/RAM) 수집 에이전트: 서버 모니터링 대시보드(dev = 로컬 PC, role all).
+  #   로컬 PC 의 CPU/RAM + (있으면)GPU/VRAM 를 읽어 스냅샷 제공. 호스트 8090 노출 →
+  #   pnpm 으로 띄운 control-tower(dev)가 http://localhost:8090 로 호출(METRICS_AGENT_ALL_URL 기본값).
+  #   ※ 로컬 pnpm 개발이면 도커 없이 직접 실행도 가능(호스트 실측이 가장 정확):
+  #       cd apps/api/fastapi/metrics-agent && uv run uvicorn app.main:app --port 8090
+  metrics-agent:
+    build:
+      context: ../../../../apps/api/fastapi
+      dockerfile: metrics-agent/Dockerfile
+    image: csc/api-metrics-agent:dev
+    container_name: csc-dev-ai-metrics-agent
+    pid: "host"
+    environment:
+      APP_ENV: dev
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:-dev-only-service-secret}
+      # 포털(scalar-gateway)은 web 호스트에 있어 LAN 너머 이 인스턴스에 도달하지 못한다.
+      # 따라서 config 기본값(csc-control-tower,scalar-gateway)보다 좁게 유지한다.
+      ALLOWED_SERVICES: csc-control-tower
+      HOST_ID: dev-local
+      HOST_LABEL: "Local PC"
+      HOST_ROLE: all
+      HOST_PROC: /host/proc
+      DISK_PATH: /host/root
+      HOST_SYS: /host/sys
+      NVIDIA_VISIBLE_DEVICES: all
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ports:
+      - "${METRICS_AGENT_PORT:-8090}:8000"
+    restart: unless-stopped
+
+volumes:
+  ollama_models:

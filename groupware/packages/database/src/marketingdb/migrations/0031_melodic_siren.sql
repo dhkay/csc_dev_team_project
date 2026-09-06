@@ -1,0 +1,2 @@
+ALTER TABLE "marketing_saved_plans" ADD COLUMN "llm_model" varchar(100) DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "marketing_saved_plans" ADD COLUMN "image_model" varchar(100) DEFAULT '' NOT NULL;

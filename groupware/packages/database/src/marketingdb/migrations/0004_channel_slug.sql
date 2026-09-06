@@ -1,0 +1,2 @@
+ALTER TABLE "marketing_channels" ADD COLUMN "slug" varchar(100);--> statement-breakpoint
+ALTER TABLE "marketing_channels" ADD CONSTRAINT "marketing_channels_org_slug_uq" UNIQUE("organization_id","slug");

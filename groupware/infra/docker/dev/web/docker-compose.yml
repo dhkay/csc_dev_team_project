@@ -1,0 +1,489 @@
+# web-server DEV 스택: 미디어 파이프라인의 웹측(상태/저장/큐) + csc-groupware.
+#   staging/prod 와 동일 호스트에 공존하므로 프로젝트명(csc-dev-web)과 포트를 분리한다.
+#   - 무거운 처리(ffmpeg/AI)는 video-ai-server 의 csc-dev-ai(worker)가 담당 → 노트북 사양 무관.
+#   - 반복 속도: 이미지 재빌드 없이 호스트 repo 의 app/ 소스를 bind-mount + uvicorn --reload.
+#     (서버 체크아웃을 Remote-SSH 로 직접 편집하거나 rsync 동기화하면 즉시 반영)
+#   - dev 라 SERVICE_TOKEN_SECRET 등은 dev-only 기본값 사용(LAN 한정). redis 는 video-ai-server 가
+#     LAN 으로 접속해야 하므로 0.0.0.0 로 노출.
+name: csc-dev-web
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: csc-dev-web-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-csc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-csc}
+      POSTGRES_DB: ${POSTGRES_DB:-csc_dev}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "6432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-csc}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Drizzle 마이그레이션 러너(일회성): NestJS 소유 DB 스키마를 앱 기동 전 적용하고 종료.
+  #   dev 는 deploy.sh 가 없으므로 profile 없이 `up` 시 자동 실행되고, DB 를 쓰는 앱이
+  #   service_completed_successfully 로 완료를 기다린다. migrate-all.sh 는 멱등 + 저널 없는 DB 는 skip.
+  db-migrate:
+    build:
+      context: ../../../..
+      dockerfile: packages/database/Dockerfile
+    image: csc/db-migrate:dev
+    container_name: csc-dev-web-db-migrate
+    environment:
+      GROUPWARE_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/groupwaredb
+      USER_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/userdb
+      CONTROLTOWER_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/controltowerdb
+      MARKETING_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/marketingdb
+      MES_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/mesdb
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  # arq 큐(작업 전달 전용). video-ai-server worker 가 LAN 으로 접속 → 0.0.0.0 노출.
+  redis:
+    image: redis:7-alpine
+    container_name: csc-dev-web-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  api-file-service:
+    build:
+      context: ../../../../apps/api/fastapi/file-upload
+      dockerfile: Dockerfile
+    image: csc/api-file-service:dev
+    container_name: csc-dev-api-file-service
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/file_upload
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:-dev-only-service-secret}
+      UPLOAD_URL_SECRET: ${SERVICE_TOKEN_SECRET:-dev-only-service-secret}
+      STORAGE_ROOT: /srv/storage
+      # 브라우저/워커가 접근할 dev 공개 베이스 = web-server LAN:host포트.
+      PUBLIC_UPLOAD_BASE_URL: http://${WEB_SERVER_HOST:-192.168.0.26}:6011
+      # video-model(worker 신원)도 허용해야 결과 저장/원본 조회가 통과. csc-marketing = 저장본 삭제 시 씬 이미지 cascade 삭제. scalar-gateway = 통합 문서 포털(로컬 pnpm 실행).
+      ALLOWED_SERVICES: web-groupware,web-control-tower,csc-groupware,csc-control-tower,csc-marketing,video-model,scalar-gateway
+    volumes:
+      # bind-mount: 호스트 app/ 소스만 컨테이너 /app/app 로(이미지의 /app/.venv, /app/alembic 보존).
+      - ../../../../apps/api/fastapi/file-upload/app:/app/app
+      - ${STORAGE_HOST_DIR:-/home/csc/Storage/dev}:/srv/storage
+    # alembic 최신화 후 --reload 로 기동(핫리로드).
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"]
+    ports:
+      - "6011:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # 확정되지 않은 자산 수거 워커: 같은 이미지, 다른 command(arq 크론 전용).
+  #   스키마는 api-file-service 가 최신화하므로 워커는 arq 만 띄운다(마이그레이션 경합 방지).
+  #   거두는 대상은 PENDING 뿐이다(UPLOADED 는 참조 여부를 이 서버가 몰라 판정하지 않는다).
+  api-file-service-worker:
+    build:
+      context: ../../../../apps/api/fastapi/file-upload
+      dockerfile: Dockerfile
+    image: csc/api-file-service:dev
+    container_name: csc-dev-api-file-service-worker
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/file_upload
+      # file-upload 전용 redis 논리 DB = 4 (0 예약, 1 data-collector, 2 video-model, 3 language-model).
+      REDIS_URL: redis://redis:6379/4
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:-dev-only-service-secret}
+      UPLOAD_URL_SECRET: ${SERVICE_TOKEN_SECRET:-dev-only-service-secret}
+      STORAGE_ROOT: /srv/storage
+      WORKER_MAX_JOBS: ${FILE_UPLOAD_WORKER_MAX_JOBS:-1}
+    volumes:
+      - ../../../../apps/api/fastapi/file-upload/app:/app/app
+      - ${STORAGE_HOST_DIR:-/home/csc/Storage/dev}:/srv/storage
+    command: ["sh", "-c", "exec arq app.worker.WorkerSettings"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      api-file-service:
+        condition: service_started
+    restart: unless-stopped
+
+  api-video-model:
+    build:
+      context: ../../../../apps/api/fastapi/video-model
+      dockerfile: Dockerfile
+    image: csc/api-video-model:dev
+    container_name: csc-dev-api-video-model
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/videomodeldb
+      REDIS_URL: redis://redis:6379/2
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:-dev-only-service-secret}
+      # scalar-gateway = 통합 문서 포털(로컬 pnpm 실행).
+      ALLOWED_SERVICES: web-groupware,web-control-tower,csc-groupware,csc-control-tower,csc-marketing,video-model,scalar-gateway
+    volumes:
+      - ../../../../apps/api/fastapi/video-model/app:/app/app
+    # 기동 시 media DB 스키마 최신화(멱등) 후 --reload 로 기동(file-service 와 동일 패턴).
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"]
+    ports:
+      - "6012:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # 그룹웨어 도메인 API. groupwaredb(Drizzle) 단독 소유(조직 공용 API 자격증명 등).
+  api-csc-groupware:
+    build:
+      context: ../../../..
+      dockerfile: apps/api/nestjs/csc-groupware/Dockerfile
+    image: csc/api-csc-groupware:dev
+    container_name: csc-dev-api-csc-groupware
+    environment:
+      PORT: "3000"
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:-dev-only-service-secret}
+      GROUPWARE_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/groupwaredb
+      # 조직 공용 API 자격증명 at-rest 암호화 키(AES-256-GCM, 32바이트). 등록/조회 시 필요.
+      GROUPWARE_SECRET_ENC_KEY: ${GROUPWARE_SECRET_ENC_KEY:-}
+      # 서비스 간 호출 허용목록: 기본값 + language-model(AI 어시스턴트) + csc-marketing(외부 영상모델 Grok 의 조직 XAI 키 resolve).
+      ALLOWED_SERVICES: web-groupware,web-control-tower,csc-groupware,csc-control-tower,csc-marketing,language-model,scalar-gateway
+      # 조직 AI도구 부여 조회 위임 대상(user 서버, 엔타이틀먼트 SSoT, 내부 도커 네트워크).
+      USER_API_URL: http://api-user:3000
+      # AI 어시스턴트 설정: 조직 기본 모델 select 후보(모델 유니버스) 조회 대상(language-model, 내부 도커 네트워크).
+      LANGUAGE_MODEL_API_URL: http://api-language-model:8000
+    ports:
+      - "6000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # 마케팅 도메인(영상 기획안 키워드/금지어 등). marketingdb(Drizzle) 단독 소유.
+  api-csc-marketing:
+    build:
+      context: ../../../..
+      dockerfile: apps/api/nestjs/csc-marketing/Dockerfile
+    image: csc/api-csc-marketing:dev
+    container_name: csc-dev-api-csc-marketing
+    environment:
+      PORT: "3000"
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:-dev-only-service-secret}
+      MARKETING_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/marketingdb
+      # 네이버 검색광고 자격증명은 여기 없다: 외부 API 직접 호출을 수집 서버로 일원화하면서
+      #   data-collector 의 NAVER_SEARCHAD_* 로 옮겼다(수집 워커가 쓰고 /lab 도 같은 자격을 본다).
+      # 조직 자격증명(잡 params, 예: Grok 키) 암호화 전용 키(선택). 설정 시 SERVICE_TOKEN_SECRET 대신 사용(키 분리).
+      #   video-model 워커(ai 스택)에도 같은 값을 줘야 복호화된다. 미설정이면 양쪽 SERVICE_TOKEN_SECRET 로 폴백.
+      JOB_CREDENTIAL_ENC_KEY: ${JOB_CREDENTIAL_ENC_KEY:-}
+      # 데이터 수집 서버(내부 도커 네트워크). datalab-home 인기 검색어 조회 위임.
+      DATA_COLLECTOR_API_URL: http://api-data-collector:8000
+      # 기획서 생성: language-model 무상태 생성(/inference/generate) 호출 대상(내부 도커 네트워크).
+      LANGUAGE_MODEL_API_URL: http://api-language-model:8000
+      # 원천 영상 렌더: video-model COMPOSE 잡 등록/상태조회(POST/GET /video-jobs) 대상(내부 도커 네트워크).
+      #   미설정 시 코드가 http://localhost:8000 로 폴백 → 컨테이너에서 video-model 미도달 → 영상 만들기 500.
+      MARKETING_VIDEO_API_URL: http://api-video-model:8000
+      # 저장본 삭제 시 씬 이미지 cascade 삭제(DELETE /uploads/{id}) 대상(내부 도커 네트워크).
+      FILE_UPLOAD_API_URL: http://api-file-service:8000
+      # 외부 영상모델(Grok) 조직 XAI 키 resolve: csc-groupware /internal/api-credentials/resolve(내부 도커 네트워크).
+      MAIN_API_URL: http://api-csc-groupware:3000
+      # 활동 로그(마케팅영상 도구) 수집 대상: log-server POST /logs(내부 도커 네트워크).
+      # APP_ENV 은 로그 엔벨로프의 environment 로 실린다(환경별 조회 분리의 근거).
+      APP_ENV: dev
+      LOG_SERVER_URL: http://api-log-server:8000
+    ports:
+      - "6003:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # MES(제조실행) 도메인. mesdb(Drizzle) 단독 소유.
+  #   Phase 0 은 /health 만 응답한다. 도메인은 Phase 1 에서 붙는다.
+  #
+  #   특이점: 이 서버는 BFF 를 거치지 않는 클라이언트(현장 PC 의 Tauri 앱)를 받는다.
+  #   데스크톱에는 SERVICE_TOKEN_SECRET 을 심지 않으므로(전 백엔드 공유 시크릿), Phase 1 에서
+  #   유저 JWT + 디바이스 토큰 경로를 받는 MesEdgeGuard 로 전역 가드를 교체한다.
+  #   계약: docs/specs/service-http-contract.md
+  api-csc-mes:
+    build:
+      context: ../../../..
+      dockerfile: apps/api/nestjs/csc-mes/Dockerfile
+    image: csc/api-csc-mes:dev
+    container_name: csc-dev-api-csc-mes
+    environment:
+      PORT: "3000"
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:-dev-only-service-secret}
+      MES_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/mesdb
+      # 서비스 간 호출 허용목록. 현장 단말은 여기 없다(서비스토큰을 갖지 않는다).
+      ALLOWED_SERVICES: web-groupware,web-control-tower,csc-groupware,csc-control-tower,scalar-gateway
+      # 활동 로그 수집 대상: log-server POST /logs(내부 도커 네트워크).
+      APP_ENV: dev
+      LOG_SERVER_URL: http://api-log-server:8000
+    ports:
+      - "6004:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # 재사용 LLM 역량(추론/챗봇 세션/RAG). dev 기본은 GPU/LAN 없이 동작하는 stub 엔진.
+  #   실제 추론은 LANGUAGE_MODEL_ENGINE=vllm 으로 전환 → web-server 의 공유 csc-ai-vllm(:8010, staging/prod 와 동일본) 호출.
+  api-language-model:
+    build:
+      context: ../../../../apps/api/fastapi
+      dockerfile: language-model/Dockerfile
+    image: csc/api-language-model:dev
+    container_name: csc-dev-api-language-model
+    environment:
+      APP_ENV: dev
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/languagemodeldb
+      REDIS_URL: redis://redis:6379/3
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:-dev-only-service-secret}
+      # csc-marketing = 기획서 생성(무상태 /inference/generate) 호출 주체.
+      ALLOWED_SERVICES: web-groupware,web-control-tower,csc-groupware,csc-control-tower,csc-marketing,language-model,scalar-gateway
+      # 추론 엔진: stub(에코, GPU/LAN 불필요) 기본. vllm 로 바꾸면 web-server 의 공유 csc-ai-vllm 호출
+      #: dev 도 staging/prod 와 같은 이 하나를 공유(로컬 GPU 불필요, 14B). 공유 외부 네트워크 csc-ai 로
+      #   컨테이너 직접 접근(dev/web 이 web-server 에서 돌 때). 오프라인/로컬은 ollama(host.docker.internal:11434) 또는 stub.
+      INFERENCE_ENGINE: ${LANGUAGE_MODEL_ENGINE:-stub}
+      INFERENCE_BASE_URL: ${LANGUAGE_MODEL_INFERENCE_URL:-http://csc-ai-vllm:8000/v1}
+      LLM_MAX_CONCURRENCY: ${LLM_MAX_CONCURRENCY:-8}
+      MODEL_CATALOG_JSON: ${MODEL_CATALOG_JSON:-}
+      CHAT_SERVED_MODEL_NAME: ${LANGUAGE_MODEL_CHAT_MODEL:-qwen3-14b}
+      QDRANT_URL: http://qdrant:6333
+      # 조직 공용 API 자격증명(Claude 키) resolve 대상: csc-groupware 내부 엔드포인트(도커 네트워크).
+      GROUPWARE_URL: http://api-csc-groupware:3000
+    extra_hosts:
+      # 오프라인 폴백 ollama(dev/ai, 같은 호스트)를 host.docker.internal:11434 로 접근(리눅스 호환).
+      - "host.docker.internal:host-gateway"
+    # 공유 vLLM(csc-ai-vllm)에 공유 외부 네트워크 csc-ai 로 접근(engine=vllm 일 때).
+    networks: [default, csc-ai]
+    volumes:
+      - ../../../../apps/api/fastapi/language-model/app:/app/language-model/app
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"]
+    ports:
+      - "6013:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # 데이터 수집 API: 캐시 조회 + refresh enqueue, 그리고 /lab 외부 API 검증 표면.
+  #   실제 수집은 data-collector-worker 가 담당. csc-marketing 이 서비스토큰으로 GET latest 호출.
+  #   논리 DB 이름은 crawler 로 유지한다(서버 리네임과 무관. 바꾸면 빈 DB 가 생기고 수집분이 고아가 된다).
+  api-data-collector:
+    build:
+      context: ../../../../apps/api/fastapi
+      dockerfile: data-collector/Dockerfile
+    image: csc/api-data-collector:dev
+    container_name: csc-dev-api-data-collector
+    environment:
+      APP_ENV: dev
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/crawler
+      REDIS_URL: redis://redis:6379/1
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:-dev-only-service-secret}
+      ALLOWED_SERVICES: csc-marketing,scalar-gateway
+      # /lab 검증 표면의 플랫폼 자격증명(조직 스코프 아님). 미설정이면 호출하지 않고
+      #   credentials_missing 으로 응답한다(기동은 막지 않는다).
+      #   실사용 수집도 같은 자격을 쓰지만 그쪽은 워커가 부른다(아래 워커 블록 참고).
+      NAVER_TREND_CLIENT_ID: ${NAVER_TREND_CLIENT_ID:-}
+      NAVER_TREND_CLIENT_SECRET: ${NAVER_TREND_CLIENT_SECRET:-}
+      NAVER_SHOPPING_CLIENT_ID: ${NAVER_SHOPPING_CLIENT_ID:-}
+      NAVER_SHOPPING_CLIENT_SECRET: ${NAVER_SHOPPING_CLIENT_SECRET:-}
+      NAVER_SEARCHAD_ACCESS_LICENSE: ${NAVER_SEARCHAD_ACCESS_LICENSE:-}
+      NAVER_SEARCHAD_SECRET_KEY: ${NAVER_SEARCHAD_SECRET_KEY:-}
+      NAVER_SEARCHAD_CUSTOMER_ID: ${NAVER_SEARCHAD_CUSTOMER_ID:-}
+    # 기동 시 수집 DB 스키마 최신화(멱등) 후 API 기동.
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    ports:
+      - "6014:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # 수집 워커(arq): 직접 HTTP 수집 + cron 재수집. 같은 이미지, command 만 다름.
+  data-collector-worker:
+    build:
+      context: ../../../../apps/api/fastapi
+      dockerfile: data-collector/Dockerfile
+    image: csc/api-data-collector:dev
+    container_name: csc-dev-data-collector-worker
+    environment:
+      APP_ENV: dev
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/crawler
+      REDIS_URL: redis://redis:6379/1
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:-dev-only-service-secret}
+      # arq 동시 잡 수: dev 는 1개면 충분.
+      WORKER_MAX_JOBS: ${DATA_COLLECTOR_WORKER_MAX_JOBS:-1}
+      # 실사용 수집 자격(플랫폼 키). 수집은 워커가 하므로 여기 없으면 조용히 빈 결과가 된다
+      #   (예외도 알림도 없이 데이터만 낡는다). 미설정이면 그 소스만 호출을 건너뛴다.
+      NAVER_TREND_CLIENT_ID: ${NAVER_TREND_CLIENT_ID:-}
+      NAVER_TREND_CLIENT_SECRET: ${NAVER_TREND_CLIENT_SECRET:-}
+      NAVER_SEARCHAD_ACCESS_LICENSE: ${NAVER_SEARCHAD_ACCESS_LICENSE:-}
+      NAVER_SEARCHAD_SECRET_KEY: ${NAVER_SEARCHAD_SECRET_KEY:-}
+      NAVER_SEARCHAD_CUSTOMER_ID: ${NAVER_SEARCHAD_CUSTOMER_ID:-}
+      # 쿼터가 좁은 소스(크론 자동 재수집 꺼져 있음).
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      SERPAPI_API_KEY: ${SERPAPI_API_KEY:-}
+    # 스키마는 api-data-collector 가 최신화하므로 워커는 arq 만 띄운다.
+    command: ["sh", "-c", "exec arq app.worker.WorkerSettings"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      api-data-collector:
+        condition: service_started
+    restart: unless-stopped
+
+  # ---- 통합 로그 파이프라인 (수집 → Kafka → ClickHouse → 조회) ----
+  # 로그는 태스크가 아니라 스트림이라 arq/redis 가 아닌 Kafka 를 쓴다(fan-out, 재생, kind 별 보존).
+  # 따라서 redis 논리 DB 할당표(.claude/rules/system-architecture.md)와 무관하다.
+  kafka:
+    # KRaft 모드: Zookeeper 불필요. 단일 노드 구성이라 broker+controller 를 한 프로세스가 겸한다.
+    # 공식 Apache 이미지 사용(bitnami/kafka 는 Docker Hub 태그가 내려갔다).
+    image: apache/kafka:3.9.0
+    container_name: csc-dev-kafka
+    environment:
+      KAFKA_NODE_ID: "0"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      # 리스너 2벌: 컨테이너 내부(PLAINTEXT, kafka:9092)와 호스트(EXTERNAL, localhost:6092).
+      # 호스트에서 `pnpm dev` 로 log-server 를 띄우려면 advertised 주소가 호스트에서
+      # 해석돼야 한다: 포트만 publish 하고 kafka:9092 만 광고하면 bootstrap 직후
+      # 클라이언트가 `kafka` 로 재접속하다 이름해석에 실패한다.
+      KAFKA_LISTENERS: PLAINTEXT://:9092,EXTERNAL://:6092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:6092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      # 브로커 간 통신은 내부 리스너로: EXTERNAL 은 호스트 개발용 창구일 뿐이다.
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # 프로듀서가 처음 보내는 순간 토픽이 자동 생성된다. 부트스트랩 스크립트 불필요.
+      # 보존기간(kind 별 차등)은 운영 시 토픽별로 조정한다.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      # 단일 호스트 공존: 힙을 작게 잡아 다른 스택을 굶기지 않게 한다.
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    ports:
+      # 호스트 개발용(EXTERNAL). 컨테이너끼리는 이 포트 없이 kafka:9092 로 붙는다.
+      - "6092:6092"
+    restart: unless-stopped
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8-alpine
+    container_name: csc-dev-clickhouse
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-logs}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-csc}
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ports:
+      - "6123:8123"
+    restart: unless-stopped
+    healthcheck:
+      # 반드시 127.0.0.1: `localhost` 를 쓰면 안 된다. 컨테이너 /etc/hosts 는 localhost 를
+      # 127.0.0.1 과 ::1 양쪽에 매핑하고 busybox wget 은 ::1 을 먼저 잡는다. 이미지 기본 설정은
+      # listen_host 로 `::` 와 `0.0.0.0` 을 함께 요청하지만 listen_try=1 이라 IPv6 바인드 실패를
+      # 조용히 넘기므로, IPv6 가 꺼진 도커 호스트에선 8123 이 IPv4 에만 열린다
+      # → localhost 로는 영구히 connection refused → 컨테이너가 never healthy → 배포 중단.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8123/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      # 빈 볼륨 첫 기동(스키마 초기화)이 느려도 retries 를 태우지 않게 유예를 준다.
+      start_period: 30s
+
+  api-log-server:
+    build:
+      context: ../../../../apps/api/fastapi
+      dockerfile: log-server/Dockerfile
+    image: csc/api-log-server:dev
+    container_name: csc-dev-api-log-server
+    environment:
+      APP_ENV: dev
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:-dev-only-service-secret}
+      # 전 백엔드가 로그를 생산한다. 조회는 라우트별 require_services 로 web BFF 만 남는다.
+      ALLOWED_SERVICES: web-groupware,web-control-tower,csc-groupware,csc-control-tower,csc-marketing,csc-mes,user,video-model,language-model,file-upload,data-collector,scalar-gateway
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DB:-logs}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-csc}
+    # ClickHouse 스키마 최신화(멱등, 체크섬 검증) 후 API 기동. 실패 시 기동 거부(fail-closed).
+    command: ["sh", "-c", "python clickhouse/migrate.py && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    ports:
+      - "6015:8000"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    restart: unless-stopped
+
+  # 적재 컨슈머: 같은 이미지, 다른 command. 마이그레이션은 API 쪽에서만 돌린다(경합 방지).
+  # 특정 AI 도구를 승격하려면 이 서비스를 LOG_SCOPE=<tool> 로 한 벌 더 복제한다.
+  log-server-worker:
+    image: csc/api-log-server:dev
+    container_name: csc-dev-log-server-worker
+    environment:
+      APP_ENV: dev
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:-dev-only-service-secret}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      LOG_SCOPE: ${LOG_SCOPE:-platform}
+      PROMOTED_AI_TOOLS: ${PROMOTED_AI_TOOLS:-}
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DB:-logs}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-csc}
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      api-log-server:
+        condition: service_started
+    restart: unless-stopped
+
+  # RAG 벡터 저장소(Phase 2). 지금은 자리만: language-model 스텁이 아직 검색을 호출하지 않는다.
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: csc-dev-qdrant
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      - "6333:6333"
+    restart: unless-stopped
+
+networks:
+  # 기본(dev) 네트워크.
+  default:
+  # 공유 vLLM(csc-ai-vllm) 접근용 외부 네트워크: web-server 에서 미리 생성(docker network create csc-ai).
+  csc-ai:
+    external: true
+    name: csc-ai
+
+volumes:
+  pg_data:
+  qdrant_data:
+  kafka_data:
+  clickhouse_data:

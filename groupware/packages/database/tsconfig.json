@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "declaration": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    // 이 패키지는 drizzle-client.ts / drizzle.config.ts 에서 process.env 를 읽는다(DB 연결 URL).
+    // 명시하지 않으면 node_modules/@types 자동 포함에 기대게 되는데, 그건 무엇이 hoist 되어
+    // 있느냐에 좌우되고 에디터의 프로젝트 판정과 CLI 가 갈리는 원인이 된다
+    // (실제로 IDE 에서만 "Cannot find name 'process'" 가 떴다).
+    // process 를 쓰는 다른 패키지(net-utils, log-client)와 같은 규칙으로 맞춘다.
+    "types": ["node"],
+    "outDir": "dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

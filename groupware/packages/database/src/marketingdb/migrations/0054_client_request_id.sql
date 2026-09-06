@@ -1,0 +1,6 @@
+ALTER TABLE "marketing_saved_plans" ADD COLUMN "client_request_id" varchar(120);--> statement-breakpoint
+ALTER TABLE "marketing_video_finals" ADD COLUMN "client_request_id" varchar(120);--> statement-breakpoint
+ALTER TABLE "marketing_video_projects" ADD COLUMN "client_request_id" varchar(120);--> statement-breakpoint
+CREATE UNIQUE INDEX "marketing_saved_plans_client_request_uq" ON "marketing_saved_plans" USING btree ("organization_id","owner_user_id","client_request_id") WHERE "marketing_saved_plans"."client_request_id" is not null;--> statement-breakpoint
+CREATE UNIQUE INDEX "marketing_video_finals_client_request_uq" ON "marketing_video_finals" USING btree ("organization_id","owner_user_id","client_request_id") WHERE "marketing_video_finals"."client_request_id" is not null;--> statement-breakpoint
+CREATE UNIQUE INDEX "marketing_video_projects_client_request_uq" ON "marketing_video_projects" USING btree ("organization_id","owner_user_id","client_request_id") WHERE "marketing_video_projects"."client_request_id" is not null;

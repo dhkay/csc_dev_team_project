@@ -1,0 +1,1 @@
+ALTER TABLE "marketing_saved_plans" ADD COLUMN "segment_mode" varchar(32) DEFAULT '' NOT NULL;

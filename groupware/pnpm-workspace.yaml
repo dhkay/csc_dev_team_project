@@ -1,0 +1,16 @@
+packages:
+  - "apps/api/nestjs/*"
+  - "apps/api/fastapi/*"
+  - "apps/web/*"
+  - "apps/desktop/*"
+  - "apps/tools/*"
+  - "packages/*"
+# apps/desktop/* 는 Tauri 데스크톱 앱(현장 PC). apps/web/* 과 분리한 이유는 둘이다.
+#   1. 배포 파이프라인: deploy-*.yml 의 paths-filter 가 apps/web/** 를 잡아 web 스택 전체를
+#      --no-cache 로 재빌드한다. 데스크톱 커밋마다 그게 돌면 안 된다.
+#   2. 계약: apps/web/* 는 "adapter-node + routes/api BFF" 라는 규칙을 갖고
+#      scripts/check-bff-routes.mjs 가 그걸 검사한다. 데스크톱은 adapter-static 이라 BFF 가 없다.
+# 새 앱을 어느 버킷에 두는지(1층 = 배포 타깃, 2층 = 스택, 2층은 스택이 둘 이상일 때만)는
+# docs/architecture/structure-blueprint.md §0 "새 앱을 어디에 두는가" 가 단일 출처다.
+# FastAPI 서버(apps/api/fastapi/*)는 uv 로 실제 의존성을 관리하지만,
+# `pnpm run dev` 한 번에 같이 띄우려고 얇은 package.json(dev 스크립트만)으로 워크스페이스에 포함한다.

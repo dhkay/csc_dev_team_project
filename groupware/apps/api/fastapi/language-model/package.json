@@ -1,0 +1,10 @@
+{
+  "name": "@csc/api-language-model",
+  "version": "0.0.0",
+  "private": true,
+  "comment": "Python(uv) 서버. 실제 의존성은 pyproject.toml/uv 로 관리. 이 package.json 은 모노레포 dev 오케스트레이션(turbo)용 얇은 래퍼.",
+  "scripts": {
+    "dev": "uv run alembic upgrade head && uv run uvicorn app.main:app --reload --port 8010",
+    "start": "uv run uvicorn app.main:app --port 8010"
+  }
+}

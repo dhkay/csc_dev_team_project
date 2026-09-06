@@ -1,0 +1,39 @@
+[project]
+name = "log-server"
+version = "0.0.0"
+description = "통합 로그 수집/조회 API: FastAPI 헥사고날 (Kafka 버퍼 + ClickHouse 저장, uv 관리)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "aiokafka>=0.11",            # 버퍼(Kafka) 발행/구독. 로그는 태스크가 아니라 스트림이라 arq 를 쓰지 않는다.
+    "clickhouse-connect>=0.8",   # 저장소(ClickHouse) 클라이언트 + 마이그레이션 러너
+    "aiohttp>=3.10",             # clickhouse-connect 의 async 클라이언트가 요구(하드 의존이 아니라 명시 필요)
+    "csc-net-utils",             # 서버 간 토큰/미들웨어 공유 (워크스페이스)
+    "csc-log-contracts",         # 로그 엔벨로프 계약 공유 커널 (워크스페이스)
+]
+# SQLAlchemy/asyncpg/alembic 없음. 이 서버는 Postgres 를 소유하지 않는다(ClickHouse 전용).
+# 서버 간 아웃바운드 HTTP 도 없어 csc-net-utils[http] 가 아니라 기본 설치를 쓴다.
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.uv.sources]
+csc-net-utils = { workspace = true }
+csc-log-contracts = { workspace = true }
+
+# uv 로 관리: `uv add <pkg>` / `uv sync` / `uv run uvicorn app.main:app --reload`
+# 락파일(uv.lock)은 워크스페이스 루트(apps/api/fastapi)에 하나만 있다.
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# 앱 소스는 __init__.py 없이 PEP 420 네임스페이스 패키지로 둔다. pytest 가 이를 인식하고
+# full-path 로 import 하도록 아래 3줄이 필요하다.
+consider_namespace_packages = true
+addopts = "--import-mode=importlib"
+pythonpath = ["."]

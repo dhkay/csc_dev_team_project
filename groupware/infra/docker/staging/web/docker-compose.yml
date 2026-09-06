@@ -1,0 +1,729 @@
+# web-server staging 스택: video-model 를 제외한 모든 앱 + Postgres.
+# self-hosted 러너(web-server)가 scripts/deploy/deploy.sh 로 빌드/기동한다.
+#
+# 이미지 전략(C): 스택별 base 이미지(csc/node-base, csc/python-base)를 먼저 빌드한 뒤,
+#   각 앱의 얇은 Dockerfile(apps/**/Dockerfile)이 그 base 를 FROM 으로 사용.
+#   base 빌드는 scripts/deploy/deploy.sh 가 compose 빌드 전에 수행한다.
+#
+# node 앱 빌드 컨텍스트 = 모노레포 루트(../../../..), fastapi 앱은 해당 앱 디렉터리.
+# 변수(${...})는 이 디렉터리의 .env(없으면 기본값)에서 읽는다. 런타임 비밀은 서버의 .env 로 관리.
+#
+# 보안 Layer 3: SERVICE_TOKEN_SECRET 은 BFF, 백엔드가 공유하는 서버 간 인증 시크릿이다.
+#   - 전 서버(web/ai 스택) 동일 값이어야 한다. 모든 참여 서비스에 필수(:?)로 주입 → 약한 기본값 미사용.
+name: csc-staging-web
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: csc-staging-web-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-csc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-csc}
+      POSTGRES_DB: ${POSTGRES_DB:-csc_staging}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-csc}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # DB 마이그레이션 러너: 앱 기동 전 1회 실행하고 종료(일회성).
+  #   - profiles 로 기본 `up` 대상에서 제외 → deploy.sh 가 `compose run` 으로 명시 실행.
+  #   - drizzle-kit migrate 는 멱등이라 매 배포 재실행해도 안전.
+  db-migrate:
+    build:
+      context: ../../../..
+      dockerfile: packages/database/Dockerfile
+    image: csc/db-migrate:staging
+    container_name: csc-staging-web-db-migrate
+    profiles: ["migrate"]
+    environment:
+      GROUPWARE_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/groupwaredb
+      USER_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/userdb
+      CONTROLTOWER_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/controltowerdb
+      MARKETING_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/marketingdb
+      MES_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/mesdb
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  web-groupware:
+    build:
+      context: ../../../..
+      dockerfile: apps/web/groupware/Dockerfile
+    image: csc/web-groupware:staging
+    container_name: csc-staging-web-groupware
+    environment:
+      PORT: "3000"
+      # staging.cscuniverse.com (prod nginx 프록시) 뒤에서 origin 을 프록시 헤더로 신뢰(폼 POST CSRF 방지).
+      PROTOCOL_HEADER: x-forwarded-proto
+      HOST_HEADER: x-forwarded-host
+      # BFF → 백엔드 내부 URL (도커 네트워크 서비스명). 미설정 시 localhost 폴백 → 로그인 등 실패.
+      PRIVATE_API_URL: http://api-csc-groupware:3000
+      PRIVATE_ADMIN_API_URL: http://api-csc-control-tower:3000
+      PRIVATE_USER_API_URL: http://api-user:3000
+      PRIVATE_STORAGE_API_URL: http://api-file-service:8000
+      # 브라우저 직접 접근용 file-upload 공개 베이스(HTTPS): img/video/audio src, /blob PUT/GET 재구성.
+      # 미설정 시 코드가 http://localhost:8001 로 폴백 → HTTPS 페이지에서 Mixed Content 차단. api-file-service PUBLIC_UPLOAD_BASE_URL 과 동일 값.
+      PUBLIC_VITE_FILE_UPLOAD_API_URL: https://staging.cscuniverse.com
+      # 재사용 LLM 역량(추론/챗봇 세션/RAG): BFF 가 language-model 로 중계(스트리밍 SSE 포함).
+      PRIVATE_LANGUAGE_MODEL_API_URL: http://api-language-model:8000
+      # csc-marketing(단어관리: 키워드/금지어). BFF 가 /api/marketing/* 을 중계.
+      PRIVATE_MARKETING_API_URL: http://api-csc-marketing:3000
+      # log-server(활동 로그 조회): BFF 가 /api/marketing/activity-logs 를 중계(조회 전용).
+      #   로그 적재는 백엔드가 직접 보내므로(LOG_SERVER_URL) 이 값은 조회 경로에만 쓰인다.
+      PRIVATE_LOG_SERVER_API_URL: http://api-log-server:8000
+      # 서버 간 인증(Layer 3): BFF 가 X-Service-Token 발급 시 사용. 전 서버 동일 값.
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # 서명 다운로드 토큰 서명 시크릿: file-upload upload_url_secret 과 동일해야 검증됨(조직 스코프 접근통제).
+      UPLOAD_URL_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+    # prod nginx 가 도커 네트워크(csc-staging-web_default)로 접근하므로 호스트 포트는 127.0.0.1 디버그용.
+    ports:
+      - "127.0.0.1:5173:3000"
+    restart: unless-stopped
+
+  web-control-tower:
+    build:
+      context: ../../../..
+      dockerfile: apps/web/control-tower/Dockerfile
+    image: csc/web-control-tower:staging
+    container_name: csc-staging-web-control-tower
+    environment:
+      PORT: "3000"
+      # BFF → 백엔드 내부 URL (도커 네트워크 서비스명). 미설정 시 localhost 폴백 → 로그인 등 실패.
+      PRIVATE_API_URL: http://api-csc-groupware:3000
+      PRIVATE_ADMIN_API_URL: http://api-csc-control-tower:3000
+      PRIVATE_USER_API_URL: http://api-user:3000
+      PRIVATE_STORAGE_API_URL: http://api-file-service:8000
+      # 브라우저 직접 접근용 file-upload 공개 베이스(HTTPS): 자산 미리보기 img/video/audio src 재구성.
+      # 미설정 시 http://localhost:8001 폴백 → Mixed Content. 파일은 apex(staging.cscuniverse.com)의 /files 로 서빙(admin→apex cross-origin, 표시엔 무관).
+      PUBLIC_VITE_FILE_UPLOAD_API_URL: https://staging.cscuniverse.com
+      # csc-marketing(공통 에셋 메타 CRUD: AI도구 설정의 공통 BGM/효과음/이미지)
+      PRIVATE_MARKETING_API_URL: http://api-csc-marketing:3000
+      # 서버 간 인증(Layer 3): BFF 가 X-Service-Token 발급 시 사용. 전 서버 동일 값.
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # 서명 다운로드 토큰 서명 시크릿: file-upload upload_url_secret 과 동일해야 검증됨(조직 스코프 접근통제).
+      UPLOAD_URL_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+    ports:
+      - "127.0.0.1:5174:3000"
+    restart: unless-stopped
+
+  api-csc-groupware:
+    build:
+      context: ../../../..
+      dockerfile: apps/api/nestjs/csc-groupware/Dockerfile
+    image: csc/api-csc-groupware:staging
+    container_name: csc-staging-api-csc-groupware
+    environment:
+      PORT: "3000"
+      # 서버 간 인증(Layer 3): ServiceTokenGuard 검증용. 전 서버 동일 값.
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      GROUPWARE_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/groupwaredb
+      # 조직 공용 API 자격증명 at-rest 암호화 키(AES-256-GCM, 32바이트). 등록/조회 시 필요.
+      GROUPWARE_SECRET_ENC_KEY: ${GROUPWARE_SECRET_ENC_KEY:-}
+      # 서비스 간 호출 허용목록: 기본값 + language-model(AI 어시스턴트) + csc-marketing(외부 영상모델 Grok 의 조직 XAI 키 resolve).
+      ALLOWED_SERVICES: web-groupware,web-control-tower,csc-groupware,csc-control-tower,csc-marketing,language-model,scalar-gateway
+      # 조직 AI도구 부여 조회 위임 대상(user 서버, 엔타이틀먼트 SSoT, 내부 도커 네트워크).
+      USER_API_URL: http://api-user:3000
+      # AI 어시스턴트 설정: 조직 기본 모델 select 후보(모델 유니버스) 조회 대상(language-model, 내부 도커 네트워크).
+      LANGUAGE_MODEL_API_URL: http://api-language-model:8000
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api-csc-control-tower:
+    build:
+      context: ../../../..
+      dockerfile: apps/api/nestjs/csc-control-tower/Dockerfile
+    image: csc/api-csc-control-tower:staging
+    container_name: csc-staging-api-csc-control-tower
+    environment:
+      PORT: "3000"
+      # 서버 간 인증(Layer 3): ServiceTokenGuard 검증용. 전 서버 동일 값.
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # 플랫폼 관리자 JWT 검증(PlatformAdminGuard): user 서버 access token 서명 키와 동일.
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in server .env}
+      # 조직 생성 위임 대상(user 서버, 내부 도커 네트워크).
+      USER_API_URL: http://api-user:3000
+      # 조직 하드 삭제 시 스토리지 정리 위임 대상(file-upload, 내부 도커 네트워크).
+      FILE_UPLOAD_API_URL: http://api-file-service:8000
+      # 서버 모니터링 레지스트리: web=도커 서비스명, ai=LAN:8091(staging 은 prod 와 ai 호스트 공유 → 포트 분리).
+      APP_ENV: staging
+      METRICS_AGENT_WEB_URL: http://metrics-agent:8000
+      METRICS_AGENT_AI_URL: http://${AI_SERVER_HOST:-192.168.0.28}:8091
+    ports:
+      - "127.0.0.1:3001:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # 호스트 시스템 지표(CPU/RAM) 수집 에이전트: 서버 모니터링 대시보드(web 호스트, GPU 없음 → gpus=[]).
+  #   pid:host + 호스트 /proc, /sys 마운트로 호스트 실측을 읽는다. 호스트 포트 미노출(control-tower 가 서비스명으로만 호출).
+  metrics-agent:
+    build:
+      context: ../../../../apps/api/fastapi
+      dockerfile: metrics-agent/Dockerfile
+    image: csc/api-metrics-agent:staging
+    container_name: csc-staging-metrics-agent
+    pid: "host"
+    environment:
+      APP_ENV: staging
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # 애그리게이터 + 통합 문서 포털(같은 도커 네트워크라 스펙 수집 가능).
+      ALLOWED_SERVICES: csc-control-tower,scalar-gateway
+      HOST_ID: staging-web
+      HOST_LABEL: "Web Server (staging)"
+      HOST_ROLE: web
+      HOST_PROC: /host/proc
+      DISK_PATH: /host/root
+      HOST_SYS: /host/sys
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro
+    restart: unless-stopped
+
+  api-csc-marketing:
+    build:
+      context: ../../../..
+      dockerfile: apps/api/nestjs/csc-marketing/Dockerfile
+    image: csc/api-csc-marketing:staging
+    container_name: csc-staging-api-csc-marketing
+    environment:
+      PORT: "3000"
+      # 서버 간 인증(Layer 3): ServiceTokenGuard 검증용. 전 서버 동일 값.
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # marketingdb (내부 도커 네트워크). Drizzle(postgres-js) → postgres:// 스킴.
+      MARKETING_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/marketingdb
+      # 네이버 검색광고 키워드도구(키워드 추출) 기본/폴백 자격증명. 조직별 설정이 있으면 그게 우선.
+      # (검색광고 자격증명은 api-data-collector 의 NAVER_SEARCHAD_* 로 이동)
+      # 데이터 소스 자격증명 at-rest 암호화 키(AES-256-GCM, 32바이트). 조직별 자격증명 저장 시 필요. 고정 유지.
+      # 조직 자격증명(잡 params, 예: Grok 키) 암호화 전용 키(선택). 설정 시 SERVICE_TOKEN_SECRET 대신 사용(키 분리).
+      #   video-model 워커(ai 스택)에도 같은 값을 줘야 복호화된다. 미설정이면 양쪽 SERVICE_TOKEN_SECRET 로 폴백.
+      JOB_CREDENTIAL_ENC_KEY: ${JOB_CREDENTIAL_ENC_KEY:-}
+      # 기획서 생성: language-model 무상태 생성(/inference/generate) 호출 대상(도커 네트워크).
+      LANGUAGE_MODEL_API_URL: http://api-language-model:8000
+      # 원천 영상 렌더: video-model COMPOSE 잡 등록/상태조회(POST/GET /video-jobs) 대상(내부 도커 네트워크).
+      #   미설정 시 코드가 http://localhost:8000 로 폴백 → 컨테이너에서 video-model 미도달 → 영상 만들기 500.
+      MARKETING_VIDEO_API_URL: http://api-video-model:8000
+      # 데이터 수집 서버(내부 도커 네트워크): datalab-home 인기 검색어 조회 위임.
+      DATA_COLLECTOR_API_URL: http://api-data-collector:8000
+      # 저장본 삭제 시 씬 이미지 cascade 삭제(DELETE /uploads/{id}) 대상(내부 도커 네트워크).
+      FILE_UPLOAD_API_URL: http://api-file-service:8000
+      # 외부 영상모델(Grok) 조직 XAI 키 resolve: csc-groupware /internal/api-credentials/resolve(내부 도커 네트워크).
+      MAIN_API_URL: http://api-csc-groupware:3000
+      # 활동 로그(마케팅영상 도구) 수집 대상: log-server POST /logs(내부 도커 네트워크).
+      # APP_ENV 은 로그 엔벨로프의 environment 로 실린다(환경별 조회 분리의 근거).
+      APP_ENV: staging
+      LOG_SERVER_URL: http://api-log-server:8000
+    ports:
+      - "127.0.0.1:3003:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # MES(제조실행) 도메인. mesdb(Drizzle) 단독 소유.
+  #   Phase 0 은 /health 만 응답한다. 도메인은 Phase 1 에서 붙는다.
+  #
+  #   특이점: 이 서버는 BFF 를 거치지 않는 클라이언트(현장 PC 의 Tauri 앱)를 받는다.
+  #   데스크톱 바이너리에는 SERVICE_TOKEN_SECRET 을 심지 않는다(전 백엔드가 공유하는 시크릿이라
+  #   유출되면 모든 csc 서버가 위조 호출에 열린다). Phase 1 에서 유저 JWT + 디바이스 토큰 경로를
+  #   받는 MesEdgeGuard 로 전역 가드를 교체하고, 그때 nginx vhost 노출도 함께 연다.
+  #   계약: docs/specs/service-http-contract.md
+  api-csc-mes:
+    build:
+      context: ../../../..
+      dockerfile: apps/api/nestjs/csc-mes/Dockerfile
+    image: csc/api-csc-mes:staging
+    container_name: csc-staging-api-csc-mes
+    environment:
+      PORT: "3000"
+      # 서버 간 인증(Layer 3): ServiceTokenGuard 검증용. 전 서버 동일 값.
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # mesdb (내부 도커 네트워크). Drizzle(postgres-js) → postgres:// 스킴.
+      MES_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/mesdb
+      # 서비스 간 호출 허용목록. 현장 단말은 여기 없다(서비스토큰을 갖지 않는다).
+      ALLOWED_SERVICES: web-groupware,web-control-tower,csc-groupware,csc-control-tower,scalar-gateway
+      # 활동 로그 수집 대상: log-server POST /logs(내부 도커 네트워크).
+      APP_ENV: staging
+      LOG_SERVER_URL: http://api-log-server:8000
+    ports:
+      - "127.0.0.1:3004:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---- 통합 로그 파이프라인 (수집 → Kafka → ClickHouse → 조회) ----
+  # 로그는 태스크가 아니라 스트림이라 arq/redis 가 아닌 Kafka 를 쓴다(fan-out, 재생, kind 별 보존).
+  # 따라서 redis 논리 DB 할당표(.claude/rules/system-architecture.md)와 무관하다.
+  # 외부 노출 없음. nginx vhost 를 두지 않고 BFF 가 도커 네트워크로만 호출한다.
+  kafka:
+    # KRaft 모드: Zookeeper 불필요. 단일 노드라 broker+controller 를 한 프로세스가 겸한다.
+    # 공식 Apache 이미지 사용(bitnami/kafka 는 Docker Hub 태그가 내려갔다).
+    image: apache/kafka:3.9.0
+    container_name: csc-staging-kafka
+    environment:
+      KAFKA_NODE_ID: "0"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      # prod 스택과 같은 호스트에 공존하므로 staging 은 힙을 더 작게 잡는다.
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    restart: unless-stopped
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8-alpine
+    container_name: csc-staging-clickhouse
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-logs}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-csc}
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    restart: unless-stopped
+    healthcheck:
+      # 반드시 127.0.0.1: `localhost` 를 쓰면 안 된다. 컨테이너 /etc/hosts 는 localhost 를
+      # 127.0.0.1 과 ::1 양쪽에 매핑하고 busybox wget 은 ::1 을 먼저 잡는다. 이미지 기본 설정은
+      # listen_host 로 `::` 와 `0.0.0.0` 을 함께 요청하지만 listen_try=1 이라 IPv6 바인드 실패를
+      # 조용히 넘기므로, IPv6 가 꺼진 도커 호스트에선 8123 이 IPv4 에만 열린다
+      # → localhost 로는 영구히 connection refused → 컨테이너가 never healthy → 배포 중단.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8123/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      # 빈 볼륨 첫 기동(스키마 초기화)이 느려도 retries 를 태우지 않게 유예를 준다.
+      start_period: 30s
+
+  api-log-server:
+    build:
+      context: ../../../../apps/api/fastapi
+      dockerfile: log-server/Dockerfile
+    image: csc/api-log-server:staging
+    container_name: csc-staging-api-log-server
+    environment:
+      APP_ENV: staging
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # 전 백엔드가 로그를 생산한다. 조회(/logs/search, /logs/usage)는 라우트별 require_services 로 web BFF 만.
+      ALLOWED_SERVICES: web-groupware,web-control-tower,csc-groupware,csc-control-tower,csc-marketing,csc-mes,user,video-model,language-model,file-upload,data-collector,scalar-gateway
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DB:-logs}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-csc}
+    # ClickHouse 스키마 최신화(멱등, 체크섬 검증) 후 API 기동. 실패 시 기동 거부(fail-closed).
+    command: ["sh", "-c", "python clickhouse/migrate.py && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    # 내부 전용(BFF 가 도커 네트워크로 호출). 호스트 포트는 127.0.0.1 디버그용.
+    ports:
+      - "127.0.0.1:3006:8000"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    restart: unless-stopped
+
+  # 적재 컨슈머: 같은 이미지, 다른 command. 마이그레이션은 API 쪽에서만 돌린다(경합 방지).
+  # 특정 AI 도구 승격 = 이 서비스를 LOG_SCOPE=<tool> + 전용 CLICKHOUSE_DATABASE 로 복제(코드 변경 없음).
+  log-server-worker:
+    image: csc/api-log-server:staging
+    container_name: csc-staging-log-server-worker
+    environment:
+      APP_ENV: staging
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      LOG_SCOPE: ${LOG_SCOPE:-platform}
+      PROMOTED_AI_TOOLS: ${PROMOTED_AI_TOOLS:-}
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DB:-logs}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-csc}
+    command: ["python", "-m", "app.worker"]
+    depends_on:
+      api-log-server:
+        condition: service_started
+    restart: unless-stopped
+
+  # 데이터 수집 API: 캐시 조회 + refresh enqueue, 그리고 /lab 외부 API 검증 표면.
+  #   실제 수집은 data-collector-worker 가 담당. csc-marketing 이 서비스토큰으로 GET latest 호출.
+  #   논리 DB 이름은 crawler 로 유지한다(서버 리네임과 무관. 바꾸면 빈 DB 가 생기고 수집분이 고아가 된다).
+  api-data-collector:
+    build:
+      context: ../../../../apps/api/fastapi
+      dockerfile: data-collector/Dockerfile
+    image: csc/api-data-collector:staging
+    container_name: csc-staging-api-data-collector
+    environment:
+      APP_ENV: staging
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/crawler
+      REDIS_URL: redis://:${REDIS_PASSWORD:-csc}@redis:6379/1
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # 데이터랩홈 인기 검색어는 csc-marketing 이 호출. scalar-gateway = 통합 문서 포털.
+      ALLOWED_SERVICES: csc-marketing,scalar-gateway
+      # /lab 검증 표면의 플랫폼 자격증명(조직 스코프 아님). 미설정이면 호출하지 않고
+      #   credentials_missing 으로 응답한다(기동은 막지 않는다).
+      #   실사용 수집도 같은 자격을 쓰지만 그쪽은 워커가 부른다(아래 워커 블록 참고).
+      NAVER_TREND_CLIENT_ID: ${NAVER_TREND_CLIENT_ID:-}
+      NAVER_TREND_CLIENT_SECRET: ${NAVER_TREND_CLIENT_SECRET:-}
+      NAVER_SHOPPING_CLIENT_ID: ${NAVER_SHOPPING_CLIENT_ID:-}
+      NAVER_SHOPPING_CLIENT_SECRET: ${NAVER_SHOPPING_CLIENT_SECRET:-}
+      NAVER_SEARCHAD_ACCESS_LICENSE: ${NAVER_SEARCHAD_ACCESS_LICENSE:-}
+      NAVER_SEARCHAD_SECRET_KEY: ${NAVER_SEARCHAD_SECRET_KEY:-}
+      NAVER_SEARCHAD_CUSTOMER_ID: ${NAVER_SEARCHAD_CUSTOMER_ID:-}
+    # 기동 시 수집 DB 스키마 최신화(멱등) 후 API 기동.
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    # 내부 전용(csc-marketing 이 도커 네트워크로 호출). 호스트 포트는 127.0.0.1 디버그용.
+    ports:
+      - "127.0.0.1:3005:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # 수집 워커(arq): 직접 HTTP 수집 + cron 재수집. 같은 이미지, command 만 다름.
+  data-collector-worker:
+    build:
+      context: ../../../../apps/api/fastapi
+      dockerfile: data-collector/Dockerfile
+    image: csc/api-data-collector:staging
+    container_name: csc-staging-data-collector-worker
+    environment:
+      APP_ENV: staging
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/crawler
+      REDIS_URL: redis://:${REDIS_PASSWORD:-csc}@redis:6379/1
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # arq 동시 잡 수: 낮게(대상 사이트 부하 완화).
+      WORKER_MAX_JOBS: ${DATA_COLLECTOR_WORKER_MAX_JOBS:-1}
+      # 실사용 수집 자격(플랫폼 키). 수집은 워커가 하므로 여기 없으면 조용히 빈 결과가 된다
+      #   (예외도 알림도 없이 데이터만 낡는다). 미설정이면 그 소스만 호출을 건너뛴다.
+      NAVER_TREND_CLIENT_ID: ${NAVER_TREND_CLIENT_ID:-}
+      NAVER_TREND_CLIENT_SECRET: ${NAVER_TREND_CLIENT_SECRET:-}
+      NAVER_SEARCHAD_ACCESS_LICENSE: ${NAVER_SEARCHAD_ACCESS_LICENSE:-}
+      NAVER_SEARCHAD_SECRET_KEY: ${NAVER_SEARCHAD_SECRET_KEY:-}
+      NAVER_SEARCHAD_CUSTOMER_ID: ${NAVER_SEARCHAD_CUSTOMER_ID:-}
+      # 쿼터가 좁은 소스(크론 자동 재수집 꺼져 있음). YouTube 검색은 하루 100회분, SerpApi 는
+      #   요금제가 정한 월 검색 횟수를 쓴다.
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      SERPAPI_API_KEY: ${SERPAPI_API_KEY:-}
+    # 스키마는 api-data-collector 가 최신화하므로 워커는 arq 만 띄운다.
+    command: ["sh", "-c", "exec arq app.worker.WorkerSettings"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      api-data-collector:
+        condition: service_started
+    restart: unless-stopped
+
+  api-user:
+    build:
+      context: ../../../..
+      dockerfile: apps/api/nestjs/user/Dockerfile
+    image: csc/api-user:staging
+    container_name: csc-staging-api-user
+    # 비밀은 서버 .env 로만 주입한다(약한 기본값을 깃/이미지에 굽지 않는다).
+    #  - 모두 필수(:?). 미설정 시 compose 가 기동 거부(fail-closed).
+    #  - SERVICE_TOKEN_SECRET 은 전 서버 동일 값(ServiceTokenGuard 검증용).
+    environment:
+      PORT: "3000"
+      USER_DATABASE_URL: postgres://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/userdb
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in server .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET in server .env}
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      PLATFORM_ROOT_EMAIL: ${PLATFORM_ROOT_EMAIL:?set PLATFORM_ROOT_EMAIL in server .env}
+      PLATFORM_ROOT_PASSWORD: ${PLATFORM_ROOT_PASSWORD:?set PLATFORM_ROOT_PASSWORD in server .env}
+    ports:
+      - "127.0.0.1:3002:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api-file-service:
+    build:
+      context: ../../../../apps/api/fastapi
+      dockerfile: file-upload/Dockerfile
+    image: csc/api-file-service:staging
+    container_name: csc-staging-api-file-service
+    environment:
+      # dev 외 환경: dev 기본 시크릿으로 기동 시 거부(fail-closed).
+      APP_ENV: staging
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/file_upload
+      # 서버 간 인증(Layer 3): ServiceTokenMiddleware 검증용. 전 서버 동일 값.
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # 1차 스토리지 = 로컬 파일시스템. 호스트 ~/Storage/staging 를 컨테이너에 마운트(아래 volumes).
+      STORAGE_ROOT: /srv/storage
+      # 2차 아카이브 = 조직 하드 삭제 정리본 보관(1차와 별개 경로, 아래 volumes 로 영속 마운트).
+      ARCHIVE_ROOT: /srv/archive
+      # 브라우저 PUT/GET 공개 베이스: nginx 가 /blob, /files 를 공인 IP 제한으로 노출.
+      PUBLIC_UPLOAD_BASE_URL: https://staging.cscuniverse.com
+      # 브라우저 직접 PUT(/blob) CORS 허용: admin 은 PUBLIC_UPLOAD_BASE_URL(staging apex)로 PUT → cross-origin.
+      ALLOWED_ORIGINS: https://staging.cscuniverse.com,https://staging-admin.cscuniverse.com
+      # presigned PUT URL 서명: 서비스 토큰 시크릿 재사용(클레임 구조가 달라 교차사용 불가). 분리는 추후.
+      UPLOAD_URL_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # video-model(worker 신원)도 허용: 결과 저장(POST /uploads/store)/원본 조회. csc-marketing = 저장본 삭제 시 씬 이미지 cascade 삭제. scalar-gateway = 통합 문서 포털.
+      ALLOWED_SERVICES: web-groupware,web-control-tower,csc-groupware,csc-control-tower,csc-marketing,video-model,scalar-gateway
+    volumes:
+      # 업로드 파일 영속: 코드 클론 밖 전용 데이터 디렉토리(~/Storage/staging). 재배포와 무관.
+      - ${STORAGE_HOST_DIR:-/home/csc/Storage/staging}:/srv/storage
+      # 2차 아카이브 영속(조직 하드 삭제 정리본): 1차와 별개 디렉토리. NAS 마운트로 교체 가능.
+      - ${ARCHIVE_HOST_DIR:-/home/csc/Archive/staging}:/srv/archive
+    # video-ai-server worker 가 LAN 으로 /files, /uploads/store 접근 → 0.0.0.0 노출(서비스토큰으로 보호).
+    ports:
+      - "8001:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # 확정되지 않은 자산 수거 워커: 같은 이미지, 다른 command(arq 크론 전용, 매일 03:00).
+  #   스키마는 api-file-service 가 최신화하므로 워커는 arq 만 띄운다(마이그레이션 경합 방지).
+  #   거두는 대상은 PENDING 뿐이다: presign 만 받고 끝난 업로드와, 그 자산을 쓰려던 저장이 실패해
+  #   확정되지 않은 것. UPLOADED 는 참조 여부를 이 서버가 몰라 판정하지 않는다.
+  #   계약: docs/specs/marketing-write-consistency.md
+  api-file-service-worker:
+    build:
+      context: ../../../../apps/api/fastapi
+      dockerfile: file-upload/Dockerfile
+    image: csc/api-file-service:staging
+    container_name: csc-staging-api-file-service-worker
+    environment:
+      APP_ENV: staging
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/file_upload
+      # file-upload 전용 redis 논리 DB = 4 (0 예약, 1 data-collector, 2 video-model, 3 language-model).
+      #   비밀번호는 기본값 폴백이다: staging 의 redis 서비스와 다른 소비자들이 모두 그렇게 쓴다
+      #   (prod 만 `:?` 로 필수). 여기만 필수로 두면 값을 안 넣은 staging 에서 compose 보간이 실패해
+      #   이 서비스 하나 때문에 배포 전체가 멈춘다(실제로 그렇게 CI 가 깨졌다).
+      REDIS_URL: redis://:${REDIS_PASSWORD:-csc}@redis:6379/4
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      UPLOAD_URL_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      STORAGE_ROOT: /srv/storage
+      ARCHIVE_ROOT: /srv/archive
+      WORKER_MAX_JOBS: ${FILE_UPLOAD_WORKER_MAX_JOBS:-1}
+    volumes:
+      # 수거는 바이트도 지운다 → API 와 같은 스토리지를 봐야 한다.
+      - ${STORAGE_HOST_DIR:-/home/csc/Storage/staging}:/srv/storage
+      - ${ARCHIVE_HOST_DIR:-/home/csc/Archive/staging}:/srv/archive
+    command: ["sh", "-c", "exec arq app.worker.WorkerSettings"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      api-file-service:
+        condition: service_started
+    restart: unless-stopped
+
+  # arq 큐(작업 전달 전용). video-ai-server worker 가 LAN 으로 접속 → 0.0.0.0 + requirepass.
+  redis:
+    image: redis:7-alpine
+    container_name: csc-staging-web-redis
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-csc}"]
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  # 미디어 작업 오케스트레이션, 상태(SSoT). 워커는 video-ai-server(별도 스택).
+  api-video-model:
+    build:
+      context: ../../../../apps/api/fastapi
+      dockerfile: video-model/Dockerfile
+    image: csc/api-video-model:staging
+    container_name: csc-staging-api-video-model
+    environment:
+      # dev 외 환경: dev 기본 시크릿으로 기동 시 거부(fail-closed).
+      APP_ENV: staging
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/videomodeldb
+      REDIS_URL: redis://:${REDIS_PASSWORD:-csc}@redis:6379/2
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # scalar-gateway = 통합 문서 포털(서비스토큰으로 /openapi.json, Try-it-out 호출).
+      ALLOWED_SERVICES: web-groupware,web-control-tower,csc-groupware,csc-control-tower,csc-marketing,video-model,scalar-gateway
+    # 기동 시 media DB 스키마 최신화(멱등) 후 기동: file-service 와 동일 패턴(deploy.sh 는 db-migrate 만 실행하므로 자체 적용).
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    # video-ai-server worker 의 콜백 수신 → 0.0.0.0 노출(서비스토큰으로 보호).
+    ports:
+      - "8002:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # 재사용 LLM 역량(추론/챗봇 세션/RAG). GPU 추론은 web-server 의 공유 vLLM(csc-ai-vllm, 아래) 로 위임.
+  api-language-model:
+    build:
+      context: ../../../../apps/api/fastapi
+      dockerfile: language-model/Dockerfile
+    image: csc/api-language-model:staging
+    container_name: csc-staging-api-language-model
+    environment:
+      APP_ENV: staging
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-csc}:${POSTGRES_PASSWORD:-csc}@db:5432/languagemodeldb
+      REDIS_URL: redis://:${REDIS_PASSWORD:-csc}@redis:6379/3
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # csc-marketing = 기획서 생성(무상태 /inference/generate) 호출 주체.
+      # csc-control-tower 제외: 플랫폼 모델 정책(허용/전역 기본 모델) 제거로 그 링크가 사라졌다.
+      ALLOWED_SERVICES: web-groupware,web-control-tower,csc-groupware,csc-marketing,language-model,scalar-gateway
+      INFERENCE_ENGINE: vllm
+      # 추론 = dev, prod, staging 공유 vLLM(csc-ai-vllm, web-server). 공유 외부 네트워크 csc-ai 로 컨테이너 직접 통신.
+      #   (호스트 hairpin 은 방화벽/도커 기본으로 막혀 있어, csc-ai 네트워크의 컨테이너명으로 접근한다.)
+      INFERENCE_BASE_URL: http://csc-ai-vllm:8000/v1
+      INFERENCE_API_KEY: ${INFERENCE_API_KEY:-not-needed}
+      LLM_MAX_CONCURRENCY: ${LLM_MAX_CONCURRENCY:-4}
+      MODEL_CATALOG_JSON: ${MODEL_CATALOG_JSON:-}
+      CHAT_SERVED_MODEL_NAME: ${LANGUAGE_MODEL_CHAT_MODEL:-qwen3-14b}
+      # 드롭다운 상세 메타: staging 도 14B(dev 기본 4B 오버라이드).
+      CHAT_PARAMS: ${CHAT_PARAMS:-14B}
+      CHAT_DESCRIPTION: ${CHAT_DESCRIPTION:-Qwen3 14B}
+      CHAT_CONTEXT_LENGTH: ${CHAT_CONTEXT_LENGTH:-8192}
+      # 이미지 생성: 내장(자체 ComfyUI FLUX.1 schnell) + 외장(OpenAI, 조직 키).
+      #   엔진은 video-ai-server 의 공유 ComfyUI 이고, LAN 창구는 그 호스트의 socat 포워더 8189
+      #   (web-server 만 허용)다. 명시하지 않으면 코드 기본값이 stub = 회색 placeholder 라 여기서 못박는다.
+      #   배치 근거/측정값/방화벽 절차: infra/docker/design-image-comfyui.md, README.md 보안 절.
+      IMAGE_ENGINE: ${IMAGE_ENGINE:-comfyui}
+      IMAGE_COMFYUI_URL: ${IMAGE_COMFYUI_URL:-http://${AI_SERVER_HOST:-192.168.0.28}:8189}
+      IMAGE_COMFYUI_TIMEOUT_S: ${IMAGE_COMFYUI_TIMEOUT_S:-300}
+      QDRANT_URL: http://qdrant:6333
+      # 조직 공용 API 자격증명(Claude 키) resolve 대상: csc-groupware 내부 엔드포인트(도커 네트워크).
+      GROUPWARE_URL: http://api-csc-groupware:3000
+    command: ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    ports:
+      - "8003:8000"
+    # 공유 vLLM(csc-ai-vllm)에 공유 외부 네트워크 csc-ai 로 접근(cross-compose: prod/dev 도 동일).
+    networks: [default, csc-ai]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # LLM 추론 엔진(csc-ai-vllm): Qwen3 14B. video-ai-server → web-server(유휴 5060 Ti)로 이전한 공유 싱글톤.
+  #   dev, staging, prod 의 api-language-model 이 host:8010 으로 이 하나를 호출(단일 16GB GPU 라 한 인스턴스만 상주).
+  #   직접 올린 로컬 가중치 마운트(HF 다운로드 아님). 가중치는 서버 .env 의 AI_MODELS_DIR 아래 qwen3-14b/.
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: csc-ai-vllm
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+      VLLM_MODEL: ${VLLM_MODEL:-/models/qwen3-14b}
+      LANGUAGE_MODEL_CHAT_MODEL: ${LANGUAGE_MODEL_CHAT_MODEL:-qwen3-14b}
+      VLLM_QUANTIZATION: ${VLLM_QUANTIZATION:-}
+      VLLM_LORA_MODULES: ${VLLM_LORA_MODULES:-}
+      VLLM_MAX_LORAS: ${VLLM_MAX_LORAS:-2}
+      VLLM_MAX_LORA_RANK: ${VLLM_MAX_LORA_RANK:-16}
+      VLLM_MAX_MODEL_LEN: ${VLLM_MAX_MODEL_LEN:-8192}
+      VLLM_GPU_UTIL: ${VLLM_GPU_UTIL:-0.90}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        exec python3 -m vllm.entrypoints.openai.api_server
+        --model "$$VLLM_MODEL" --served-model-name "$$LANGUAGE_MODEL_CHAT_MODEL"
+        $${VLLM_QUANTIZATION:+--quantization "$$VLLM_QUANTIZATION"}
+        --enable-lora --max-loras "$$VLLM_MAX_LORAS" --max-lora-rank "$$VLLM_MAX_LORA_RANK"
+        $${VLLM_LORA_MODULES:+--lora-modules $$VLLM_LORA_MODULES}
+        --max-model-len "$$VLLM_MAX_MODEL_LEN" --gpu-memory-utilization "$$VLLM_GPU_UTIL"
+    volumes:
+      - ${AI_MODELS_DIR:-/home/escoa/ai-models}:/models:ro
+      - ${AI_LORAS_DIR:-/home/escoa/ai-loras}:/loras:ro
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # language-model 은 csc-ai 도커 네트워크로 접근하므로 호스트 포트는 로컬 전용(127.0.0.1): LAN 미노출.
+    #   (로컬 개발 SSH 터널 `ssh -L 9010:localhost:8010 web-server` 은 localhost 라 그대로 동작.)
+    ports:
+      - "127.0.0.1:${VLLM_PORT:-8010}:8000"
+    # 공유 외부 네트워크: dev/staging/prod language-model 이 csc-ai-vllm 이름으로 접근.
+    networks: [default, csc-ai]
+    restart: unless-stopped
+
+  # RAG 벡터 저장소(Qdrant). 내부 전용(호스트 포트 미노출).
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: csc-staging-qdrant
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
+  # 통합 API 문서 포털(Scalar): 전 백엔드 OpenAPI 를 한 페이지에서 조회/테스트(내부 전용).
+  #   대상 목록 SSOT = apps/tools/scalar-gateway/src/registry.ts. 아래 *_API_URL 은 그 registry 가 읽는다.
+  #   nginx(staging-api-docs.cscuniverse.com)가 IP allowlist + BasicAuth 로 노출. 호스트 포트는 127.0.0.1 디버그용.
+  scalar-gateway:
+    build:
+      context: ../../../..
+      dockerfile: apps/tools/scalar-gateway/Dockerfile
+    image: csc/scalar-gateway:staging
+    container_name: csc-staging-scalar-gateway
+    environment:
+      PORT: "3000"
+      # 서버 간 인증(Layer 3): 각 백엔드 호출 시 X-Service-Token('scalar-gateway') 발급. 전 서버 동일 값.
+      SERVICE_TOKEN_SECRET: ${SERVICE_TOKEN_SECRET:?set SERVICE_TOKEN_SECRET in server .env}
+      # 포털 BasicAuth(앱 레벨, nginx allowlist 와 이중). 선택: 미설정 시 BasicAuth 비활성(nginx IP allowlist 로 보호).
+      # 설정하려면 GitHub Secrets(STAGING_SWAGGER_USER/PASSWORD) → write-secret-env 가 서버 .env 에 주입.
+      SWAGGER_USER: ${SWAGGER_USER:-}
+      SWAGGER_PASSWORD: ${SWAGGER_PASSWORD:-}
+      # 백엔드 내부 URL(도커 네트워크 서비스명): registry 가 읽어 스펙 수집/프록시.
+      # registry.ts 에 등록된 백엔드는 전부 여기 URL 이 있어야 한다. 빠지면 그 항목만
+      # 컨테이너 안에서 localhost 폴백으로 해석되어 조용히 도달 불가가 된다.
+      GROUPWARE_API_URL: http://api-csc-groupware:3000
+      CONTROL_TOWER_API_URL: http://api-csc-control-tower:3000
+      USER_API_URL: http://api-user:3000
+      VIDEO_SERVICE_URL: http://api-video-model:8000
+      FILE_SERVICE_URL: http://api-file-service:8000
+      MARKETING_API_URL: http://api-csc-marketing:3000
+      MES_API_URL: http://api-csc-mes:3000
+      LANGUAGE_MODEL_API_URL: http://api-language-model:8000
+      # 수집 서버는 registry 에 두 항목(실사용 / -lab)이 있지만 같은 백엔드라 URL 은 하나다.
+      DATA_COLLECTOR_API_URL: http://api-data-collector:8000
+      METRICS_AGENT_API_URL: http://metrics-agent:8000
+      LOG_SERVER_URL: http://api-log-server:8000
+    ports:
+      - "127.0.0.1:3300:3000"
+    restart: unless-stopped
+
+networks:
+  # 기본(staging) 네트워크.
+  default:
+  # 공유 vLLM(csc-ai-vllm) 접근용 외부 네트워크: web-server 에서 미리 생성(docker network create csc-ai).
+  csc-ai:
+    external: true
+    name: csc-ai
+
+volumes:
+  pg_data:
+  qdrant_data:
+  kafka_data:
+  clickhouse_data:

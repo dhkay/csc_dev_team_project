@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-hidden="true">
+  <defs>
+    <linearGradient id="u-main" x1=".15" y1=".1" x2=".85" y2=".95">
+      <stop offset="0" stop-color="#6ea8f5"/>
+      <stop offset=".5" stop-color="#3d82f0"/>
+      <stop offset="1" stop-color="#2563d6"/>
+    </linearGradient>
+    <linearGradient id="u-alt" x1=".2" y1=".1" x2=".8" y2="1">
+      <stop offset="0" stop-color="#cfe2ff"/>
+      <stop offset="1" stop-color="#9cc4fb"/>
+    </linearGradient>
+  </defs>
+  <circle cx="43" cy="23" r="7.5" fill="url(#u-alt)"/>
+  <path d="M31 46c0-7.2 5.4-12 12-12s12 4.8 12 12a1.8 1.8 0 0 1-1.8 1.8H32.8A1.8 1.8 0 0 1 31 46Z" fill="url(#u-alt)"/>
+  <circle cx="25" cy="25" r="9.5" fill="url(#u-main)"/>
+  <path d="M9 49c0-8.7 6.7-14.5 16-14.5S41 40.3 41 49a2.2 2.2 0 0 1-2.2 2.2H11.2A2.2 2.2 0 0 1 9 49Z" fill="url(#u-main)"/>
+  <ellipse cx="21.5" cy="21.5" rx="3" ry="2.4" fill="#fff" opacity=".35"/>
+  <path d="M52 4 53.7 7.3 57 9 53.7 10.7 52 14 50.3 10.7 47 9 50.3 7.3Z" fill="#ffce4d"/>
+</svg>

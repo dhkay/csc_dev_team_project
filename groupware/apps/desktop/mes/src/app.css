@@ -1,0 +1,60 @@
+@import 'tailwindcss';
+
+/**
+ * 현장 터치 UI 토큰.
+ *
+ * 화면마다 픽셀을 손으로 적으면 반드시 갈리므로 토큰으로 한 번만 정한다.
+ * 근거: 장갑 낀 손가락은 접촉 면적이 넓고 정확도가 낮다. 시청 거리는 60cm 에서 80cm 사이이고
+ * 공장 조명은 편차가 크다.
+ */
+@theme {
+  /* 최소 터치 타겟. 주요 동작은 --size-touch-lg 를 쓴다 */
+  --size-touch: 3rem; /* 48px */
+  --size-touch-lg: 3.5rem; /* 56px */
+  /* 인접 타겟 최소 간격 */
+  --spacing-touch-gap: 0.75rem; /* 12px */
+  /* 핵심 수치(생산 수량 등) 표시용 */
+  --text-figure: 2rem; /* 32px */
+  --text-figure--line-height: 2.25rem;
+}
+
+:root {
+  color-scheme: light;
+  /* 본문 18px. 원거리 가독성 기준 */
+  font-size: 18px;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family:
+    'Pretendard',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  /* 터치 오조작 방지: 텍스트 드래그 선택과 길게 눌러 나오는 컨텍스트 메뉴를 막는다.
+     입력 필드는 아래에서 다시 허용한다. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  /* 더블탭 확대 억제. 확대되면 작업자가 복구하지 못한다 */
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+input,
+textarea,
+[contenteditable='true'] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* 저사양 PC(Celeron 급 WebView2)에서 프레임이 떨어지는 주범이 그림자다. 평면 테두리를 쓴다. */
+* {
+  box-shadow: none;
+}

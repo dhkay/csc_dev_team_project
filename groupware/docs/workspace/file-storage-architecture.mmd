@@ -1,0 +1,95 @@
+flowchart TB
+    browser([사용자 브라우저])
+
+    %% ============ 물리 머신 B: 앱, 데이터 ============
+    subgraph webserver["web-server (물리 머신 B, 앱/데이터 존)"]
+        subgraph bff["① 프론트 (BFF)"]
+            wct[관리자 웹<br/>web-control-tower]
+            wgw[일반 웹<br/>web-groupware]
+        end
+
+        subgraph backend["② 백엔드 서버"]
+            user[user<br/>로그인, 토큰]
+            cscgw[csc-groupware<br/>공지, 조직, 조직 API 자격증명]
+            cscct[csc-control-tower<br/>관리, 운영]
+            mkt[csc-marketing<br/>마케팅 단어관리 키워드/금지어]
+            llm["language-model<br/>LLM 추론 게이트, 챗봇 세션, RAG<br/>추론은 ai-server vLLM 위임"]
+            media["video-model<br/>작업 생성, enqueue, 상태, 콜백수신, 스위퍼<br/>오케스트레이션 전용, 파일 미접촉"]
+            upload["file-service<br/>업로드/조회/다운로드 API, 메타데이터<br/>로컬 디스크, file_upload 단독 라이터<br/>temp→commit, 멱등, 동시쓰기 제한"]
+        end
+
+        subgraph storage["파일 보관 (로컬 디스크, 단일 저장소)"]
+            disk[파일 저장소<br/>업로드, 결과 실제 파일]
+            nas[NAS<br/>중요 파일 장기 보관]
+        end
+
+        subgraph db["③ DB 서버 (Postgres 논리 DB + 벡터 저장소)"]
+            mjobs[(videomodeldb<br/>작업 SSoT<br/>video-model 단독)]
+            fupload[(file_upload<br/>file-service 단독)]
+            llmdb[(languagemodeldb<br/>챗봇 세션, 문서 메타<br/>language-model 단독)]
+            qdrant[(qdrant 벡터<br/>RAG 임베딩<br/>language-model 단독)]
+            mktdb[(marketingdb<br/>csc-marketing 단독)]
+            ctdb[(controltowerdb)]
+            udb[(userdb)]
+            gdb[(groupwaredb)]
+        end
+
+        %% 트랜스포트 — 머신 B에 위치 (producer 측, 무상태 컴퓨트 격리)
+        redis["Redis (arq)<br/>Queue 전용, 작업 전달만<br/>휘발성, 어느 서비스도 소유 안 함"]
+    end
+
+    %% ============ 물리 머신 A: GPU, 무상태 ============
+    subgraph aiserver["ai-server (물리 머신 A, 무상태 컴퓨트 존, 파일 스토리지 미접촉)"]
+        worker["arq Worker<br/>미디어 잡 오케스트레이션 실행<br/>스트리밍, job_id 멱등, 콜백 재시도"]
+        gen["미디어 생성 provider<br/>internal=ffmpeg (기본)<br/>external=외부 생성 API (스캐폴딩)"]
+        vllm["vLLM (LLM 추론 엔진)<br/>Qwen3, OpenAI 호환, GPU<br/>language-model 추론 위임"]
+    end
+
+    %% ============ 사용자 진입 ============
+    browser --> wct & wgw
+    wct --> user & cscct & llm
+    wgw --> user & cscgw & llm & mkt
+
+    %% ============ 미디어 파이프라인 ============
+    cscgw -->|① 미디어 작업 요청| media
+    media ==>|② 작업 생성 PENDING| mjobs
+    media -->|③ enqueue| redis
+    redis -->|④ 작업 소비 LAN| worker
+    worker -.->|⑤ 원본 파일 조회, HTTP GET| upload
+    worker -->|⑥ 생성 provider 라우팅| gen
+    worker ==>|⑦ 결과 저장 요청, HTTP POST 스트리밍| upload
+    worker -.->|⑧ 완료/실패 콜백, 재시도 멱등| media
+    media ==>|상태 갱신 SSoT| mjobs
+    media -.->|⑨ 리컨실리에이션 스위퍼<br/>stale PROCESSING→타임아웃, 재확인| mjobs
+
+    %% ============ LLM (챗봇, RAG) ============
+    llm -.->|LLM 추론 요청, LAN| vllm
+    llm -.->|Claude 키 resolve, 서비스토큰| cscgw
+    llm --> llmdb
+    llm --> qdrant
+
+    %% ============ 저장 (file-service 단독 권위) ============
+    upload ==>|파일 바이트| disk
+    upload -->|메타데이터| fupload
+    disk -.->|선별 보관| nas
+
+    %% ============ 도메인 DB ============
+    user --> udb
+    cscct --> ctdb
+    cscgw --> gdb
+    mkt --> mktdb
+
+    %% ============ 스타일 ============
+    classDef svc fill:#cde9ff,stroke:#1f78b4,color:#000;
+    classDef green fill:#d7f0dd,stroke:#2e8b57,color:#000;
+    classDef queue fill:#ffe0e0,stroke:#e05252,color:#000;
+    classDef agentc fill:#ffd9ec,stroke:#d63384,color:#000;
+    classDef store fill:#ffe7cc,stroke:#e08a1e,color:#000;
+    classDef dbc fill:#ecdcff,stroke:#8a4fc4,color:#000;
+
+    class media,upload,llm svc;
+    class user,cscgw,cscct,mkt green;
+    class redis queue;
+    class vllm agentc;
+    class disk,nas store;
+    class mjobs,fupload,llmdb,qdrant,mktdb,ctdb,udb,gdb dbc;

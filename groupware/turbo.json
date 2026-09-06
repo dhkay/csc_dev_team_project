@@ -1,0 +1,44 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".svelte-kit/**", "build/**"]
+    },
+    // dev 도 의존 패키지를 **먼저 빌드한다**(check/typecheck/test/bundle 과 같은 이유).
+    // 워크스페이스 패키지는 소스가 아니라 dist 로 참조되고(package.json exports),
+    // `pnpm install` 은 링크만 하고 빌드하지 않는다. 이 의존이 없으면 새 패키지를 붙이거나
+    // dist 를 지운 뒤 처음 `pnpm dev` 를 돌린 사람이 **런타임에** 이것을 만난다:
+    //   Cannot find module '@csc/…' imported from …/versionMode.ts
+    // 타입체크는 통과하는데(다른 태스크가 빌드를 끌고 온다) 화면만 죽어서, 원인이 패키지
+    // 배선이라는 것이 드러나지 않는다. 실제로 겪었다.
+    // 빌드는 캐시되므로 두 번째부터는 캐시 히트다(dev 자체는 cache:false 그대로).
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {},
+    "check": {
+      "dependsOn": ["^build"]
+    },
+    // 타입체크는 의존 패키지의 **빌드 산출물(dist/*.d.ts)** 을 읽는다. 워크스페이스 패키지는
+    // 소스가 아니라 dist 로 참조되므로(package.json exports), 상위 패키지를 먼저 빌드해야
+    // "Cannot find module '@csc/...'" 가 나지 않는다. pnpm install 은 링크만 하고 빌드하지 않는다.
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["^build"]
+    },
+    // Tauri 번들링(데스크톱 exe/설치본). cache:false 가 **필수**다.
+    // Rust 산출물(src-tauri/target)은 위 build.outputs 에 잡히지 않아서, 캐시를 켜면
+    // turbo 가 "산출물 없는 성공" 을 캐시한다. 다음 릴리스에서 exe 가 안 만들어졌는데
+    // 초록불이 뜨고, 그 사실은 배포 직전에야 드러난다.
+    "bundle": {
+      "dependsOn": ["^build"],
+      "cache": false
+    }
+  }
+}

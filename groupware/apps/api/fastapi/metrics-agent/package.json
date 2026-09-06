@@ -1,0 +1,10 @@
+{
+  "name": "@csc/api-metrics-agent",
+  "version": "0.0.0",
+  "private": true,
+  "comment": "Python(uv) 서버. 실제 의존성은 pyproject.toml/uv 로 관리. 이 package.json 은 모노레포 dev 오케스트레이션(turbo)용 얇은 래퍼. 포트 8090 = csc-control-tower dev 레지스트리 기본값(METRICS_AGENT_ALL_URL).",
+  "scripts": {
+    "dev": "uv run uvicorn app.main:app --reload --port 8090",
+    "start": "uv run uvicorn app.main:app --port 8090"
+  }
+}

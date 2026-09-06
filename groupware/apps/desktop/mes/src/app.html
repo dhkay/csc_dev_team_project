@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- 터치 단말에서 더블탭 확대와 텍스트 자동 확대를 끈다. 장갑 낀 손이 화면을
+         두 번 건드리는 일이 잦은데, 그때 화면이 확대되면 작업자가 복구하지 못한다. -->
+    <meta name="format-detection" content="telephone=no" />
+    %sveltekit.head%
+  </head>
+  <body data-sveltekit-preload-data="tap">
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>

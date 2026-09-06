@@ -1,0 +1,3 @@
+# 직접 올린 모델 가중치 / LoRA 어댑터(수 GB): 커밋 금지. AI_MODELS_DIR/AI_LORAS_DIR 기본 위치.
+models/
+loras/

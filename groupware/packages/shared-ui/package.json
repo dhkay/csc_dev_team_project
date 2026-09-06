@@ -1,0 +1,10 @@
+{
+  "name": "@csc/shared-ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./popout": "./src/popout/index.ts"
+  }
+}

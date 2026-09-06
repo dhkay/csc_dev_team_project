@@ -1,0 +1,17 @@
+[package]
+name = "mes-store"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Phase 0 은 마이그레이션 러너와 읽기 전용 조회만이라 의존이 셋뿐이다. 도메인 타입
+# (mes-contracts)과 상태 머신(mes-core)은 outbox 에 실제로 쓰는 Phase 1 에서 추가한다.
+# 안 쓰는 의존을 미리 달아두면 crate 경계가 있는지 없는지 알 수 없게 된다.
+[dependencies]
+serde = { workspace = true }
+thiserror = { workspace = true }
+# bundled: SQLite 를 함께 빌드한다. 현장 PC 에 시스템 SQLite 가 있으리라 가정할 수 없고,
+# 버전이 갈리면 WAL 동작이 미묘하게 달라진다.
+rusqlite = { version = "0.32", features = ["bundled"] }

@@ -1,0 +1,21 @@
+[project]
+name = "csc-log-contracts"
+version = "0.0.0"
+description = "csc 로그 엔벨로프 계약 (Python 측 단일 구현): 프로듀서/컨슈머 공유 zero-dep 커널."
+requires-python = ">=3.12"
+# zero-dep: 표준 라이브러리만 사용한다. 프레임워크/ORM/HTTP 를 절대 끌어오지 않는다
+# (모든 프로듀서 앱이 이 패키지를 의존하므로 여기 들어온 의존성은 전 서비스로 번진다).
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/csc_log_contracts"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+consider_namespace_packages = true
+addopts = "--import-mode=importlib"
+pythonpath = ["src"]

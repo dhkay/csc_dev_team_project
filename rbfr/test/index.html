@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RBFR 연구 | ESCOA 그룹웨어</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ===================== 그룹웨어 좌측 사이드바 (맥락용, 실제 아님) ===================== -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">ESCOA <span>Groupware</span></div>
+    <nav class="sidebar-nav">
+      <a href="#">홈</a>
+      <a href="#">조직도 / 사용자관리</a>
+      <a href="#">게시판 / 공지</a>
+      <a href="#">전자결재</a>
+      <a href="#" class="active">RBFR 연구</a>
+      <a href="#">설정</a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="avatar">연</div>
+      <div>
+        <div class="name">김연구 연구원</div>
+        <div class="role">DESIGNER · 관리자 권한 겸임(데모)</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================== RBFR 메인 영역 ===================== -->
+  <div class="main">
+    <header class="topbar">
+      <div class="crumb">RBFR 연구</div>
+      <h1>RBFR 원료 시뮬레이터</h1>
+      <p class="sub">원료 배합 비율에 따른 역할 도메인(보습·진정·보호·정돈·균형, 4개 직접역할 + 1개 통합역할) 점수를 계산하고, 목표 점수에 맞는 원료를 추천합니다. 역할 이름·순서는 잠정값입니다(00_개요.md 참고).</p>
+    </header>
+
+    <nav class="tabs">
+      <div class="tabs-left">
+        <button class="tab active" data-tab="forward">정방향 계산</button>
+        <button class="tab" data-tab="reverse">역방향 추천</button>
+        <button class="tab" data-tab="register">원료 등록 / 검증</button>
+      </div>
+      <div class="tabs-right">
+        <button class="tab tab-settings" data-tab="settings">설정 <span class="admin-only-badge">관리자 전용</span></button>
+      </div>
+    </nav>
+
+    <!-- ===================== 탭 1. 정방향 계산 ===================== -->
+    <section class="panel active" id="panel-forward">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <h2>원료 선택 및 배합비율</h2>
+            <span class="ratio-total" id="fwd-total-badge">합계 96%</span>
+          </div>
+
+          <div class="ingredient-search">
+            <input type="text" placeholder="원료명 또는 INCI명 검색...">
+            <button class="btn-outline">검색</button>
+          </div>
+
+          <label class="ai-toggle-row">
+            <span class="toggle-switch"><input type="checkbox" id="ai-infer-toggle"><span class="toggle-track"></span></span>
+            <span class="toggle-label">AI 추론 데이터 사용 <span class="toggle-sub">(승인된 연구데이터가 없는 원료도 AI 추정치로 포함)</span></span>
+          </label>
+
+          <div class="ingredient-list">
+            <div class="ingredient-row">
+              <div class="ing-info">
+                <span class="ing-name">유기농 녹차수</span>
+                <span class="mfds-badge grade-ok">ALLOW · 사용가능</span>
+              </div>
+              <div class="ing-ratio">
+                <input type="range" min="0" max="100" value="40" class="ratio-slider" data-axis-target>
+                <span class="ratio-value">40%</span>
+              </div>
+            </div>
+            <div class="ingredient-row">
+              <div class="ing-info">
+                <span class="ing-name">무환자추출물</span>
+                <span class="mfds-badge grade-ok">ALLOW · 사용가능</span>
+              </div>
+              <div class="ing-ratio">
+                <input type="range" min="0" max="100" value="26" class="ratio-slider" data-axis-target>
+                <span class="ratio-value">26%</span>
+              </div>
+            </div>
+            <div class="ingredient-row">
+              <div class="ing-info">
+                <span class="ing-name">병풀 엑소좀</span>
+                <span class="mfds-badge grade-limit">LIMIT · 0.5% 이하</span>
+              </div>
+              <div class="ing-ratio">
+                <input type="range" min="0" max="100" value="12" class="ratio-slider" data-axis-target>
+                <span class="ratio-value">12%</span>
+              </div>
+            </div>
+            <div class="ingredient-row">
+              <div class="ing-info">
+                <span class="ing-name">호호바 오일</span>
+                <span class="mfds-badge grade-ok">ALLOW · 사용가능</span>
+              </div>
+              <div class="ing-ratio">
+                <input type="range" min="0" max="100" value="18" class="ratio-slider" data-axis-target>
+                <span class="ratio-value">18%</span>
+              </div>
+            </div>
+            <div class="ingredient-row" id="ai-ingredient-row" data-disabled="true">
+              <div class="ing-info">
+                <span class="ing-name">세라마이드3</span>
+                <span class="mfds-badge grade-nodata" id="ai-ingredient-badge">NODATA · 확정 데이터 없음</span>
+              </div>
+              <div class="ing-ratio">
+                <input type="range" min="0" max="100" value="0" class="ratio-slider" data-axis-target id="ai-ingredient-slider" disabled>
+                <span class="ratio-value">0%</span>
+              </div>
+            </div>
+            <button class="btn-add-ingredient">+ 원료 추가</button>
+          </div>
+
+          <div class="llm-box">
+            <div class="llm-head">AI 해석</div>
+            <p>진정 수치가 상대적으로 낮게 나타납니다. 무환자추출물의 배합비율을 소폭 늘리거나, 진정 역할 기여도가 높은 원료(예: 유기농 녹차수 계열)를 보강하면 역할 간 균형을 맞추는 데 도움이 됩니다. (통합역할 "균형"은 이 계산과 무관하게 별도 근거로만 채워집니다.)</p>
+          </div>
+        </div>
+
+        <div class="card chart-card">
+          <div class="card-head">
+            <h2>역할 도메인 결과</h2>
+          </div>
+          <div class="pentagon-wrap">
+            <svg viewBox="0 0 320 320" class="pentagon-svg" id="fwd-chart">
+              <polygon class="grid-ring" points="" data-ring="1"/>
+              <polygon class="grid-ring" points="" data-ring="0.75"/>
+              <polygon class="grid-ring" points="" data-ring="0.5"/>
+              <polygon class="grid-ring" points="" data-ring="0.25"/>
+              <line class="grid-axis" x1="160" y1="160" x2="160" y2="160" data-axis="0"/>
+              <line class="grid-axis" x1="160" y1="160" x2="160" y2="160" data-axis="1"/>
+              <line class="grid-axis" x1="160" y1="160" x2="160" y2="160" data-axis="2"/>
+              <line class="grid-axis" x1="160" y1="160" x2="160" y2="160" data-axis="3"/>
+              <line class="grid-axis" x1="160" y1="160" x2="160" y2="160" data-axis="4"/>
+              <polygon class="data-shape" id="fwd-shape" points=""/>
+              <circle class="data-dot" r="4" data-dot="0"/>
+              <circle class="data-dot" r="4" data-dot="1"/>
+              <circle class="data-dot" r="4" data-dot="2"/>
+              <circle class="data-dot" r="4" data-dot="3"/>
+              <circle class="data-dot" r="4" data-dot="4"/>
+              <text class="axis-label" x="160" y="24" text-anchor="middle" data-label="0">보습</text>
+              <text class="axis-label" x="296" y="120" text-anchor="middle" data-label="1">진정</text>
+              <text class="axis-label" x="248" y="300" text-anchor="middle" data-label="2">보호</text>
+              <text class="axis-label" x="72" y="300" text-anchor="middle" data-label="3">정돈</text>
+              <text class="axis-label" x="24" y="120" text-anchor="middle" data-label="4">균형</text>
+            </svg>
+          </div>
+          <div class="axis-values" id="fwd-values">
+            <div class="axis-value"><span>보습</span><b>78</b><i class="ratio-pct">32%</i></div>
+            <div class="axis-value"><span>진정</span><b>52</b><i class="ratio-pct">21%</i></div>
+            <div class="axis-value"><span>보호</span><b>88</b><i class="ratio-pct">36%</i></div>
+            <div class="axis-value"><span>정돈</span><b>71</b><i class="ratio-pct">29%</i></div>
+            <div class="axis-value integrated" id="balance-axis-value">
+              <span>균형 (통합)</span><b class="pending" id="balance-value">미입력</b>
+              <span class="pending-badge" id="balance-pending-badge">근거 없음</span>
+              <button class="btn-outline" id="balance-add-evidence-btn" style="margin-top:6px;padding:4px 10px;font-size:11px;">근거 입력(데모)</button>
+            </div>
+          </div>
+          <p class="hint">굵은 숫자 = 효능값(절대 강도) · 아래 %는 비중값(5축 합계 대비 상대 비율). 통합역할(균형)은 남는 비중·평균으로 자동 채우지 않고, 독립 근거가 있을 때만 값이 들어갑니다(05_스코어링엔진.md 원칙5).</p>
+
+          <div class="cell-strip">
+            <div class="cell-strip-head">
+              <span>Cell(칸) 공식 표현 · rule_version v1</span>
+              <span class="cell-total-badge" id="cell-total-badge">총 0 / 15~18</span>
+            </div>
+            <div class="cell-rows" id="cell-rows">
+              <div class="cell-row" data-cell-role="0"><label>보습</label></div>
+              <div class="cell-row" data-cell-role="1"><label>진정</label></div>
+              <div class="cell-row" data-cell-role="2"><label>보호</label></div>
+              <div class="cell-row" data-cell-role="3"><label>정돈</label></div>
+              <div class="cell-row integrated" data-cell-role="4"><label>균형</label></div>
+            </div>
+            <p class="cell-note">비중(%)을 칸 수(0~5)로 변환해 오각형마다 CCW로 채운 것이 승인·확정·RBDR 전달용 공식 표현입니다. 위 연속값 오각형은 실시간 프리뷰이고 이 변환을 대체하지 않습니다(05_스코어링엔진.md "Cell·오각형" 참고).</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== 처방 검증 결과 + 저장 (추가) ===================== -->
+      <div class="card validation-card">
+        <div class="card-head">
+          <h2>처방 검증 결과</h2>
+          <button class="btn-solid" id="save-formula-btn">처방으로 저장</button>
+        </div>
+        <div class="validation-grid">
+          <div class="validation-item ok">
+            <span class="v-label">배합비 합계</span>
+            <span class="v-value">96% (100% 이내)</span>
+          </div>
+          <div class="validation-item warn">
+            <span class="v-label">사용량 한도</span>
+            <span class="v-value">병풀 엑소좀 12% — 권장 0.5% 이하 초과</span>
+            <span class="source-badge predicted">근거: 식약청 배합한도</span>
+          </div>
+          <div class="validation-item ok">
+            <span class="v-label">pH 적합성</span>
+            <span class="v-value">목표 pH 5.5 — 전 원료 안정 범위 내</span>
+          </div>
+          <div class="validation-item synergy">
+            <span class="v-label">원료 조합</span>
+            <span class="v-value">유기농 녹차수 × 병풀 엑소좀 — 진정 시너지 계수 1.1</span>
+            <span class="source-badge predicted">예측값 (data_source: manual_estimate)</span>
+          </div>
+          <div class="validation-item muted">
+            <span class="v-label">사용감·안정성</span>
+            <span class="v-value">이 처방으로 저장 후 별도 실측 기록 필요</span>
+          </div>
+          <div class="validation-item ok">
+            <span class="v-label">예상 원가</span>
+            <span class="v-value">1g당 약 42원 (배합비 × 원료 단가 합산)</span>
+          </div>
+        </div>
+
+        <div class="save-formula-form" id="save-formula-form" hidden>
+          <div class="form-row">
+            <div class="form-field"><label>처방 이름</label><input type="text" placeholder="예: 신생아용 진정 로션 v1"></div>
+            <div class="form-field"><label>제품 유형</label><input type="text" placeholder="예: 로션"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-field"><label>목표 컨셉</label><input type="text" placeholder="예: 진정 중심 신생아용"></div>
+            <div class="form-field"><label>목표 pH</label><input type="text" placeholder="예: 5.5"></div>
+          </div>
+          <button class="btn-solid" id="confirm-save-formula">저장</button>
+          <span class="save-confirm" id="save-confirm-msg" hidden>저장되었습니다 (디자인 예시 — 실제 저장 없음)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== 탭 2. 역방향 추천 ===================== -->
+    <section class="panel" id="panel-reverse">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h2>목표 RBFR 5축 설정</h2></div>
+          <div class="slider-group">
+            <div class="slider-row">
+              <label>보습</label>
+              <input type="range" min="0" max="100" value="85" class="ratio-slider" data-rev-axis="0">
+              <span class="slider-num">85</span>
+            </div>
+            <div class="slider-row">
+              <label>진정</label>
+              <input type="range" min="0" max="100" value="60" class="ratio-slider" data-rev-axis="1">
+              <span class="slider-num">60</span>
+            </div>
+            <div class="slider-row">
+              <label>보호</label>
+              <input type="range" min="0" max="100" value="90" class="ratio-slider" data-rev-axis="2">
+              <span class="slider-num">90</span>
+            </div>
+            <div class="slider-row">
+              <label>정돈</label>
+              <input type="range" min="0" max="100" value="70" class="ratio-slider" data-rev-axis="3">
+              <span class="slider-num">70</span>
+            </div>
+            <div class="slider-row">
+              <label>균형(목표)</label>
+              <input type="range" min="0" max="100" value="75" class="ratio-slider" data-rev-axis="4">
+              <span class="slider-num">75</span>
+            </div>
+          </div>
+
+          <div class="card-head" style="margin-top:24px;"><h2>추천 원료</h2></div>
+          <div class="recommend-list">
+            <div class="recommend-card">
+              <div class="rec-rank">1</div>
+              <div class="rec-body">
+                <div class="rec-name">유기농 녹차수 <span class="mfds-badge grade-ok">ALLOW</span></div>
+                <div class="rec-score">근접도 96%</div>
+                <p>목표 대비 보호·진정 역할이 가장 가깝습니다. 진정 역할 보강이 필요하면 무환자추출물과 조합을 검토하세요.</p>
+              </div>
+            </div>
+            <div class="recommend-card">
+              <div class="rec-rank">2</div>
+              <div class="rec-body">
+                <div class="rec-name">병풀 엑소좀 <span class="mfds-badge grade-limit">LIMIT</span></div>
+                <div class="rec-score">근접도 89%</div>
+                <p>정돈 역할이 강해 목표와 근접하나, 배합한도(0.5% 이하) 확인이 필요합니다.</p>
+              </div>
+            </div>
+            <div class="recommend-card">
+              <div class="rec-rank">3</div>
+              <div class="rec-body">
+                <div class="rec-name">호호바 오일 <span class="mfds-badge grade-ok">ALLOW</span></div>
+                <div class="rec-score">근접도 82%</div>
+                <p>균형(통합역할)은 원료 단위 추천에는 관여하지 않고 처방 단위 근거로만 채워집니다. 이 원료는 직접역할 조합의 보완재로 적합합니다.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card chart-card">
+          <div class="card-head"><h2>목표 오각형</h2></div>
+          <div class="pentagon-wrap">
+            <svg viewBox="0 0 320 320" class="pentagon-svg" id="rev-chart">
+              <polygon class="grid-ring" points="" data-ring="1"/>
+              <polygon class="grid-ring" points="" data-ring="0.75"/>
+              <polygon class="grid-ring" points="" data-ring="0.5"/>
+              <polygon class="grid-ring" points="" data-ring="0.25"/>
+              <line class="grid-axis" x1="160" y1="160" x2="160" y2="160" data-axis="0"/>
+              <line class="grid-axis" x1="160" y1="160" x2="160" y2="160" data-axis="1"/>
+              <line class="grid-axis" x1="160" y1="160" x2="160" y2="160" data-axis="2"/>
+              <line class="grid-axis" x1="160" y1="160" x2="160" y2="160" data-axis="3"/>
+              <line class="grid-axis" x1="160" y1="160" x2="160" y2="160" data-axis="4"/>
+              <polygon class="data-shape target" id="rev-shape" points=""/>
+              <circle class="data-dot target" r="4" data-dot="0"/>
+              <circle class="data-dot target" r="4" data-dot="1"/>
+              <circle class="data-dot target" r="4" data-dot="2"/>
+              <circle class="data-dot target" r="4" data-dot="3"/>
+              <circle class="data-dot target" r="4" data-dot="4"/>
+              <text class="axis-label" x="160" y="24" text-anchor="middle">보습</text>
+              <text class="axis-label" x="296" y="120" text-anchor="middle">진정</text>
+              <text class="axis-label" x="248" y="300" text-anchor="middle">보호</text>
+              <text class="axis-label" x="72" y="300" text-anchor="middle">정돈</text>
+              <text class="axis-label" x="24" y="120" text-anchor="middle">균형</text>
+            </svg>
+          </div>
+          <p class="hint">슬라이더를 움직이면 오각형이 자연스럽게 목표 모양으로 이동합니다 (실제 구현 시 svelte/motion spring 적용 예정).</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== 탭 3. 원료 등록 / 검증 ===================== -->
+    <section class="panel" id="panel-register">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h2>원료 기본정보</h2></div>
+          <div class="form-row">
+            <div class="form-field">
+              <label>원료명 (한글)</label>
+              <input type="text" placeholder="예: 유기농 녹차수">
+            </div>
+            <div class="form-field">
+              <label>INCI명</label>
+              <input type="text" placeholder="예: Camellia Sinensis Leaf Water">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label>기능 카테고리</label>
+              <select><option>보습제</option><option>계면활성제</option><option>피부컨디셔닝제</option></select>
+            </div>
+            <div class="form-field">
+              <label>CAS No.</label>
+              <input type="text" placeholder="식약청 조회용 (선택)">
+            </div>
+          </div>
+          <button class="btn-solid" style="width:auto;padding:12px 24px;">식약청 조회</button>
+
+          <div class="mfds-result">
+            <div><span>규제 등급</span><b class="mfds-badge grade-ok">ALLOW</b></div>
+            <div><span>확정상태</span><b class="verify-badge status-approved" style="font-size:11px;">CONFIRMED</b></div>
+            <div><span>배합한도</span><b>제한 없음</b></div>
+            <div><span>조회일시</span><b>2026-09-06 14:20</b></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>직접 역할 기여도</h2>
+          </div>
+          <p class="hint" style="margin:0 0 14px;text-align:left;">역할마다 독립적으로 0~100을 입력합니다(합계 제약 없음, `ingredient_roles.contribution`). 통합역할(균형)은 이 화면에 없습니다 — 원료 단위가 아니라 처방 단위로 별도 근거를 입력합니다(아래 안내 참고).</p>
+          <div class="stepper-group">
+            <div class="stepper-row">
+              <label>보습</label>
+              <button class="stepper-btn" data-step="-1">－</button>
+              <span class="stepper-val" data-axis="0">62</span>
+              <button class="stepper-btn" data-step="1">＋</button>
+            </div>
+            <div class="stepper-row">
+              <label>진정</label>
+              <button class="stepper-btn" data-step="-1">－</button>
+              <span class="stepper-val" data-axis="1">40</span>
+              <button class="stepper-btn" data-step="1">＋</button>
+            </div>
+            <div class="stepper-row">
+              <label>보호</label>
+              <button class="stepper-btn" data-step="-1">－</button>
+              <span class="stepper-val" data-axis="2">55</span>
+              <button class="stepper-btn" data-step="1">＋</button>
+            </div>
+            <div class="stepper-row">
+              <label>정돈</label>
+              <button class="stepper-btn" data-step="-1">－</button>
+              <span class="stepper-val" data-axis="3">30</span>
+              <button class="stepper-btn" data-step="1">＋</button>
+            </div>
+          </div>
+          <div class="cell-note" style="margin-top:14px;padding:10px 12px;background:var(--bg);border-radius:var(--radius-sm);">
+            통합역할(균형)은 여기서 입력하지 않습니다. 처방을 저장한 뒤 탭1 "처방 검증 결과"에서
+            독립 근거와 함께 처방 단위로만 채웁니다(05_스코어링엔진.md 원칙5).
+          </div>
+
+          <div class="card-head" style="margin-top:20px;"><h2>근거 정보</h2></div>
+          <div class="form-row">
+            <div class="form-field">
+              <label>근거유형</label>
+              <select><option>문헌근거</option><option>연구원경험치</option><option>제조사데이터</option></select>
+            </div>
+            <div class="form-field">
+              <label>신뢰도</label>
+              <select><option>상</option><option>중</option><option>하</option></select>
+            </div>
+          </div>
+          <div class="form-field">
+            <label>근거자료 첨부</label>
+            <div class="file-drop">파일을 드래그하거나 클릭하여 첨부</div>
+          </div>
+
+          <div class="status-row">
+            <span class="verify-badge status-unverified">미검증</span>
+            <span class="assignee">담당 연구원: 김연구</span>
+            <button class="btn-solid">등록 신청</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== 부속 1. 원료쌍 조합 계수 입력 (추가) ===================== -->
+      <div class="card" style="margin-top:24px;">
+        <div class="card-head"><h2>원료쌍 조합 계수 입력</h2></div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>원료 A</label>
+            <select><option>유기농 녹차수</option><option>무환자추출물</option><option>병풀 엑소좀</option><option>호호바 오일</option></select>
+          </div>
+          <div class="form-field">
+            <label>원료 B</label>
+            <select><option>병풀 엑소좀</option><option>유기농 녹차수</option><option>무환자추출물</option><option>호호바 오일</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>영향 역할</label>
+            <select><option>보습</option><option>진정</option><option>보호</option><option>정돈</option><option>안정성</option><option>사용감</option></select>
+          </div>
+          <div class="form-field">
+            <label>관계</label>
+            <select><option>synergy (상승)</option><option>conflict (충돌)</option><option>neutral (무관)</option><option>unknown (미측정)</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field"><label>계수 (기본 1.0)</label><input type="text" value="1.1"></div>
+          <div class="form-field">
+            <label>신뢰도</label>
+            <select><option>low</option><option>medium</option><option>high</option></select>
+          </div>
+          <div class="form-field">
+            <label>근거출처</label>
+            <select><option>manual_estimate</option><option>lab_test</option><option>literature</option><option>expert_review</option><option>unknown</option></select>
+          </div>
+        </div>
+        <button class="btn-solid" style="width:auto;padding:12px 24px;">저장</button>
+
+        <table class="interaction-table">
+          <thead><tr><th>원료 A</th><th>원료 B</th><th>축</th><th>관계</th><th>계수</th><th>근거</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>유기농 녹차수</td><td>병풀 엑소좀</td><td>진정</td>
+              <td><span class="interaction-badge synergy">synergy</span></td><td>1.1</td>
+              <td><span class="source-badge predicted">manual_estimate</span></td>
+            </tr>
+            <tr>
+              <td>무환자추출물</td><td>호호바 오일</td><td>정돈</td>
+              <td><span class="interaction-badge conflict">conflict</span></td><td>0.9</td>
+              <td><span class="source-badge measured">lab_test</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ===================== 부속 2. 처방 사용감·안정성 기록 (추가) ===================== -->
+      <div class="card" style="margin-top:24px;">
+        <div class="card-head"><h2>처방 사용감 · 안정성 기록</h2></div>
+        <div class="form-field" style="margin-bottom:16px;">
+          <label>대상 처방</label>
+          <select><option>신생아용 진정 로션 v1</option><option>보습 크림 시안 A</option></select>
+        </div>
+
+        <div class="sensory-grid">
+          <div class="sensory-item"><label>끈적임</label><input type="range" min="0" max="10" value="3"><span>3</span></div>
+          <div class="sensory-item"><label>산뜻함</label><input type="range" min="0" max="10" value="7"><span>7</span></div>
+          <div class="sensory-item"><label>흡수감</label><input type="range" min="0" max="10" value="8"><span>8</span></div>
+          <div class="sensory-item"><label>발림성</label><input type="range" min="0" max="10" value="6"><span>6</span></div>
+          <div class="sensory-item"><label>잔여감</label><input type="range" min="0" max="10" value="2"><span>2</span></div>
+          <div class="sensory-item"><label>점도</label><input type="range" min="0" max="10" value="5"><span>5</span></div>
+        </div>
+
+        <div class="form-row" style="margin-top:16px;">
+          <div class="form-field"><label>분리 위험</label><select><option>하</option><option>중</option><option>상</option></select></div>
+          <div class="form-field"><label>침전 위험</label><select><option>하</option><option>중</option><option>상</option></select></div>
+          <div class="form-field"><label>변색 위험</label><select><option>하</option><option>중</option><option>상</option></select></div>
+          <div class="form-field"><label>변취 위험</label><select><option>하</option><option>중</option><option>상</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field"><label>테스트 조건</label><input type="text" placeholder="예: 45도 4주 보관"></div>
+          <div class="form-field">
+            <label>근거출처</label>
+            <select><option>lab_test</option><option>manual_estimate</option><option>literature</option><option>expert_review</option><option>unknown</option></select>
+          </div>
+        </div>
+        <button class="btn-solid" style="width:auto;padding:12px 24px;">기록 저장</button>
+      </div>
+    </section>
+
+    <!-- ===================== 탭 4. 설정 (Profile 관리, 관리자 전용) ===================== -->
+    <section class="panel" id="panel-settings">
+      <div class="card">
+        <div class="card-head">
+          <h2>Profile 관리</h2>
+          <span class="admin-only-badge">관리자 전용</span>
+        </div>
+        <p class="hint" style="margin:0 0 16px;text-align:left;">
+          지금 쓰는 5개 역할(보습·진정·보호·정돈·균형)을 여기서 자유롭게 편집할 수 없습니다.
+          스킨(Skin) Profile의 4직접+1통합 구조는 특허 청구항에 묶인 확정 사항이라 잠금 처리됩니다.
+          이 화면은 Profile을 새로 등록·활성화하고 Cell 규칙 판을 승인하는 용도로만 씁니다
+          (02_화면구성.md "설정(Profile 관리)" 참고).
+        </p>
+
+        <div class="profile-grid">
+          <div class="profile-card is-active">
+            <div class="profile-name">
+              스킨(Skin)
+              <span class="locked-badge">잠금 · 특허 청구항 고정</span>
+            </div>
+            <div class="profile-roles">보습(DIRECT) · 진정(DIRECT) · 보호(DIRECT) · 정돈(DIRECT) · 균형(INTEGRATED) — 사용 중</div>
+          </div>
+          <div class="profile-card is-empty">
+            <div class="profile-name">클렌즈(Cleanse) <span class="empty-badge">비어있음</span></div>
+            <div class="profile-roles">역할 미등록 · 비활성</div>
+          </div>
+          <div class="profile-card is-empty">
+            <div class="profile-name">배스(Bath) <span class="empty-badge">비어있음</span></div>
+            <div class="profile-roles">역할 미등록 · 비활성</div>
+          </div>
+          <div class="profile-card is-empty">
+            <div class="profile-name">유기농(Organic) <span class="empty-badge">비어있음</span></div>
+            <div class="profile-roles">역할 미등록 · 비활성</div>
+          </div>
+          <div class="profile-card is-empty">
+            <div class="profile-name">시그니처(Signature) <span class="empty-badge">비어있음</span></div>
+            <div class="profile-roles">역할 미등록 · 비활성</div>
+          </div>
+        </div>
+
+        <button class="btn-outline" style="margin-top:16px;">+ 새 Profile 등록(관리자 전용, 데모 비활성)</button>
+
+        <div class="rule-version-card">
+          <div class="rule-version-info">
+            <span>Cell 규칙 판</span>
+            <b>rule_version v1 · 총 Cell 15~18 · CCW 채움</b>
+          </div>
+          <span class="approved-badge">승인됨 · 관리자A · 2026-08-20</span>
+        </div>
+        <p class="hint" style="margin-top:10px;">승인된 판은 여기서 다시 고칠 수 없습니다. 값을 바꾸려면 새 판을 만들고 다시 승인받습니다(05_스코어링엔진.md "Cell·오각형" 참고).</p>
+      </div>
+
+      <div class="card" style="margin-top:24px;">
+        <div class="card-head"><h2>사용자 역할 (RBFR 5단계, 02_화면구성.md 참고)</h2></div>
+        <table class="interaction-table">
+          <thead><tr><th>역할</th><th>할 수 있는 것</th></tr></thead>
+          <tbody>
+            <tr><td>ADMIN</td><td>이 설정 화면 포함 전체 조회 · Profile/Cell 규칙 관리 (그룹웨어 조직 관리 권한자로 대체)</td></tr>
+            <tr><td>REVIEWER</td><td>검수 요청 처리(승인/수정요청/반려)</td></tr>
+            <tr><td>DESIGNER</td><td>처방 생성/설계/산출/검수 요청</td></tr>
+            <tr><td>DATA</td><td>원료 등록/수정, 기여도/물성/단가, 규제 확정</td></tr>
+            <tr><td>VIEWER</td><td>확정된 처방 조회, 결과 문서 내려받기</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<div class="mockup-note">디자인 예시 · 실제 데이터/연동 없음 · rbfr/test/index.html</div>
+
+<script src="assets/main.js"></script>
+</body>
+</html>

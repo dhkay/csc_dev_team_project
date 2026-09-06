@@ -1,0 +1,1 @@
+ALTER TABLE "marketing_video_projects" ADD COLUMN "segment_mode" varchar(32) DEFAULT '' NOT NULL;

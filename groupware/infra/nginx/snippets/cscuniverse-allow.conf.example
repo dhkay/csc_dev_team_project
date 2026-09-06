@@ -1,0 +1,18 @@
+# cscuniverse.com 접근 허용 목록.
+#
+# 실제 파일(cscuniverse-allow.conf)은 gitignore 되어 서버에만 존재한다(공인 IP 를 repo 에 안 남기기 위함).
+# 서버 셋업 시 1회:
+#   cd infra/nginx/snippets
+#   cp cscuniverse-allow.conf.example cscuniverse-allow.conf
+#   아래 203.0.113.1 을 이 사무실 공인 IP(= cscuniverse.com A레코드 값)로 교체.
+#   (git reset --hard 로도 untracked 파일은 지워지지 않으므로 CI 배포에도 유지됨)
+#
+# 정책: "이 공인 IP에 연결된 모든 기기 허용, 그 외 전부 차단"
+#   - 공인 IP 로 직접 들어오는 외부 요청 허용
+#   - 같은 라우터 뒤 사내 LAN 전체 허용 (hairpin NAT 시 사설 IP 로 찍힘)
+#   - 그 외 모든 외부 IP 차단(deny all)
+
+allow 203.0.113.1;        # ← 사무실 공인 IP 로 교체 (예시값: RFC5737 문서용 IP)
+allow 192.168.0.0/24;     # 사내 LAN 전체 (이 공인 IP 뒤 모든 기기)
+allow 127.0.0.1;          # 서버 로컬
+deny  all;

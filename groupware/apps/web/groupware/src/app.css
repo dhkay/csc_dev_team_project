@@ -1,0 +1,145 @@
+@import 'tailwindcss';
+
+/* 클래스 기반 테마 변형: `.dark` 조상 하위에서만 `dark:` 활성(색 외 미세 조정용, 예: 그림자).
+   색은 아래 시맨틱 토큰이 담당하므로 컴포넌트는 대부분 `dark:` 없이 토큰만 쓴다. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * 시맨틱 디자인 토큰: 테마 확장의 단일 지점.
+ * 컴포넌트는 색 리터럴 대신 이 토큰 유틸(bg-surface / text-fg / border-line ...)만 참조한다.
+ * 테마 전환/추가는 "값 블록 교체"로 끝난다(컴포넌트 수정 0):
+ *   - 기본(light) = 아래 @theme 값
+ *   - 다크        = `.dark { ... }` 블록에서 같은 변수 오버라이드
+ *   - 새 테마(예: sepia) = ThemeScope 가 붙이는 `.sepia { ... }` 블록 한 개 추가
+ *     (+ themeStore 의 ThemeId/THEME_CLASS 에 'sepia' 등록: themeStore 주석의 3단계 참고)
+ */
+@theme {
+  --color-brand: #1868db;
+
+  /* 표면 */
+  --color-surface: #ffffff; /* 앱바/페이지/사이드바 배경 */
+  --color-elevated: #ffffff; /* 드롭다운/카드 등 떠 있는 표면 */
+  --color-hover: #f3f4f6; /* hover 배경(gray-100) */
+
+  /* 텍스트 */
+  --color-fg: #111827; /* 기본 텍스트(gray-900) */
+  --color-fg-muted: #374151; /* 보조 텍스트(gray-700) */
+  --color-fg-subtle: #6b7280; /* 아이콘/약한 텍스트(gray-500) */
+
+  /* 경계 */
+  --color-line: #e5e7eb; /* 보더/구분선(gray-200) */
+
+  /* 유리 표면: 떠 있는 활성 칸(세그먼트 토글 등). 배경이 비쳐야 하므로 값에 알파를 담는다:
+     불투명 토큰으로는 표현할 수 없어 여기가 유일한 알파 토큰 묶음이다.
+     유리를 투명하게 두면 색 대비가 거의 없으므로, 보이게 하는 몫은 **살짝 어둡게 파인 트랙 +
+     테두리 + 그림자**가 맡는다(밝게 채우면 유리가 아니라 흰 판이 된다). */
+  --color-glass: rgba(255, 255, 255, 0.5); /* 유리 칸: 투명하게 두고 blur 로 배경을 왜곡 */
+  --color-glass-track: rgba(0, 0, 0, 0.05); /* 유리가 얹히는 파인 트랙 */
+  --color-glass-line: rgba(0, 0, 0, 0.08); /* 유리 테두리(ring/border) */
+
+  /* 강조(브랜드 파생): 선택/활성/링크 */
+  --color-accent-fg: #1868db; /* 강조 텍스트 */
+  --color-accent-bg: rgba(24, 104, 219, 0.1); /* 강조 배경(연한) */
+
+  /* 브랜드 그라데이션: 주요 액션(예: 기획서 생성) 버튼. 라이트는 깊고 차분한 블루→인디고. */
+  --color-brand-grad-from: #1656c9;
+  --color-brand-grad-to: #6d28d9;
+
+  /* 위험(로그아웃/삭제) */
+  --color-danger-fg: #dc2626; /* red-600 */
+  --color-danger-bg: #fef2f2; /* red-50 */
+
+  /* 성공(수집 가능/연결됨) */
+  --color-success-fg: #15803d; /* green-700 */
+  --color-success-bg: rgba(22, 163, 74, 0.1); /* green-600 연한 */
+
+  /* 경고(준비중/주의) */
+  --color-warning-fg: #b45309; /* amber-700 */
+  --color-warning-bg: rgba(217, 119, 6, 0.12); /* amber-600 연한 */
+
+  /* 좁은 화면 ↔ 넓은 화면 경계. `lib/shared/lib/utils/viewportBreakpoints.ts` 의
+     WIDE_MIN_WIDTH(1024) 와 **같은 경계**여야 한다: 한쪽은 CSS(`lg:`), 다른 쪽은 JS 로 같은
+     레이아웃 전환을 판정하기 때문이다. 기본값(64rem)을 그대로 두지 않고 px 로 못 박는 이유는
+     JS 쪽이 px 를 재기 때문이다(루트 글꼴 크기가 바뀌면 64rem 은 1024px 이 아니게 된다). */
+  --breakpoint-lg: 1024px;
+}
+
+/* 다크 테마: 변수만 교체(스코프: ThemeScope 가 붙인 .dark 서브트리). 컴포넌트 무수정. */
+.dark {
+  --color-surface: #171717; /* neutral-900 */
+  --color-elevated: #262626; /* neutral-800 */
+  --color-hover: #262626; /* neutral-800 */
+
+  --color-fg: #f5f5f5; /* neutral-100 */
+  --color-fg-muted: #d4d4d4; /* neutral-300 */
+  --color-fg-subtle: #a3a3a3; /* neutral-400 */
+
+  --color-line: #404040; /* neutral-700 */
+
+  /* 유리: 다크에서는 흰빛을 아주 옅게 얹어 띄운다(밝게 채우면 판처럼 보인다). */
+  --color-glass: rgba(255, 255, 255, 0.12);
+  --color-glass-track: rgba(255, 255, 255, 0.06);
+  --color-glass-line: rgba(255, 255, 255, 0.18);
+
+  --color-accent-fg: #5b9bff; /* 다크 위 가독 강조 */
+  --color-accent-bg: rgba(24, 104, 219, 0.2);
+
+  /* 다크: 어두운 표면 위에서 발광감 있도록 확실히 밝고 채도 높게 */
+  --color-brand-grad-from: #4f9dff;
+  --color-brand-grad-to: #b96bff;
+
+  --color-danger-fg: #f87171; /* red-400 */
+  --color-danger-bg: rgba(239, 68, 68, 0.12);
+
+  --color-success-fg: #4ade80; /* green-400. 다크 위 가독 */
+  --color-success-bg: rgba(34, 197, 94, 0.16);
+
+  --color-warning-fg: #fbbf24; /* amber-400. 다크 위 가독 */
+  --color-warning-bg: rgba(245, 158, 11, 0.18);
+}
+
+/* 글래스 스크롤바: 챗봇 드롭다운의 glass 톤과 통일한 반투명, 트랙 안에 떠 있는 얇은 pill.
+   overflow 컨테이너에 `glass-scrollbar` 클래스만 붙이면 가로/세로 양쪽에 적용된다.
+   참고: 네이티브 스크롤바는 backdrop-filter(실제 블러)가 먹지 않아 '반투명 유리 톤'으로만 표현한다.
+   thumb 은 투명 보더 2px + background-clip:padding-box 로 트랙 안쪽에 여백을 둬 얇은 pill 처럼 보인다. */
+.glass-scrollbar {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(17, 24, 39, 0.22) transparent;
+}
+.glass-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.glass-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.glass-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: rgba(17, 24, 39, 0.22);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+.glass-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(17, 24, 39, 0.34);
+  background-clip: padding-box;
+}
+
+/* 다크: 어두운 표면 위에서는 밝은 반투명 pill 로 뒤집는다(값만 교체). */
+.dark .glass-scrollbar {
+  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+}
+.dark .glass-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.22);
+}
+.dark .glass-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.34);
+}
+
+/* 스크롤바 숨김: 스크롤은 되지만 스크롤바를 감춘다(환경설정 컨테이너 등). */
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge/IE */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Edge */
+}

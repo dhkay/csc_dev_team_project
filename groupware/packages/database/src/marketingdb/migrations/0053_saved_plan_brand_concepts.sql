@@ -1,0 +1,1 @@
+ALTER TABLE "marketing_saved_plans" ADD COLUMN "brand_concepts" jsonb;

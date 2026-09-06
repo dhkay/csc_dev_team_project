@@ -1,0 +1,44 @@
+{
+  "name": "@csc/web-groupware",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --port 5173",
+    "build": "vite build",
+    "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "test:unit": "vitest"
+  },
+  "devDependencies": {
+    "@rollup/plugin-terser": "^1.0.0",
+    "@sveltejs/adapter-node": "^5.2.9",
+    "@sveltejs/kit": "^2.8.0",
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "@tailwindcss/vite": "^4.3.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/svelte": "^5.3.1",
+    "@types/node": "^22.10.0",
+    "jsdom": "^29.1.1",
+    "svelte": "^5.1.0",
+    "svelte-check": "^4",
+    "tailwindcss": "^4.3.1",
+    "terser": "^5.48.0",
+    "typescript": "^5.7.0",
+    "vite": "^5.4.0",
+    "vitest": "^3.2.6"
+  },
+  "dependencies": {
+    "@csc/api-providers": "workspace:*",
+    "@csc/entitlements": "workspace:*",
+    "@csc/net-utils": "workspace:*",
+    "@csc/pricing": "workspace:*",
+    "@csc/shared-ui": "workspace:*",
+    "@csc/tool-versions": "workspace:*",
+    "@csc/video-capabilities": "workspace:*",
+    "@tanstack/svelte-query": "^6.1.36",
+    "axios": "^1.18.0"
+  }
+}

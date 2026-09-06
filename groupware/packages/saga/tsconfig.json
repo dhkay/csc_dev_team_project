@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "declaration": true,
+    // NestJS 데코레이터(@Injectable, @Interval, @Catch)를 쓰는 ./nest 엔트리 때문에 필요하다.
+    // 코어는 데코레이터가 없다(프레임워크 비종속).
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "dist",
+    "rootDir": "./src",
+    // 서브엔트리(nest/drizzle/testing)가 코어를 **패키지 이름으로** 참조한다.
+    // 상대경로로 참조하면 tsup 이 엔트리마다 코어를 복사해 넣어, 같은 클래스/심볼이 엔트리마다
+    // 다른 것이 된다. DI 토큰과 @Catch(instanceof)가 조용히 안 맞는 사고가 그것이다.
+    "baseUrl": ".",
+    "paths": { "@csc/saga": ["./src/index.ts"] }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

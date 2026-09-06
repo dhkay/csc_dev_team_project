@@ -1,0 +1,62 @@
+# Node
+node_modules/
+pnpm-lock.yaml.bak
+dist/
+build/
+.svelte-kit/
+.turbo/
+*.tsbuildinfo
+
+# Python / uv
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# nginx 접근 허용 목록: 공인 IP 포함, 서버 전용 (example 만 커밋)
+infra/nginx/snippets/cscuniverse-allow.conf
+
+# compose override: 서버에서 임시 실험용으로만 두는 로컬 파일. 커밋 금지.
+#   deploy.sh 는 `docker compose -f <파일>` 로 호출해 override 를 병합하지 않으므로 배포에는
+#   영향이 없지만, 서버에서 `-f` 없이 docker compose 를 직접 실행하면 자동 병합된다.
+#   그때 base 에서 사라진(이름이 바뀐) 서비스를 참조하고 있으면 "has neither an image nor a
+#   build context" 로 compose 전체가 무효가 되어 수동 디버깅을 막는다. 남기지 말 것.
+docker-compose.override.yml
+
+# file-upload 1차 스토리지: 서버는 코드 클론 밖 ~/Storage/{env} 에 둔다(gitignore 무관).
+# 로컬 dev 는 레포 내부 Storage/dev 에 업로드물을 둔다(STORAGE_ROOT=../../../../Storage/dev).
+/Storage/
+# 아래는 file-upload 디렉토리 기본값(./storage), e2e 임시 폴더만 무시한다.
+apps/api/fastapi/file-upload/storage/
+apps/api/fastapi/file-upload/.e2e_storage/
+
+# 프로젝트와 무관한 개인 실험/임의 구현. 통째로 로컬 전용이며 커밋하지 않는다.
+# 루트에 두는 이유: 워크스페이스 글롭(pnpm-workspace.yaml)과 배포 paths-filter
+# (.github/workflows/deploy-*.yml), 가드 스크립트(scripts/check-*.mjs)가 모두
+# apps/*, packages/* 만 지정하므로 빌드/배포/CI 에 딸려가지 않는다.
+# Node 실험은 `pnpm install --ignore-workspace` 로 루트 lockfile 과 분리한다.
+/sandbox/
+
+# Logs / OS / editor
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Vite writes these transient config-load files; never commit.
+vite.config.ts.timestamp-*.mjs
+
+# 데스크톱(Tauri) 빌드 산출물. target 은 수 GB 까지 자란다.
+**/src-tauri/target/
+**/src-tauri/gen/
+# 코드 서명 인증서. 절대 커밋하지 않는다(런북의 시크릿 보관 절차 참고).
+*.pfx
+*.p12

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHOP | ESCOA</title>
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div class="announcement-bar">FIRST100 얼리 오픈 · 가장 먼저 시작하는 100일 케어</div>
+
+<header class="gnb">
+  <div class="gnb-inner">
+    <a class="gnb-logo" href="index.html">
+      <img src="assets/img/logo-black.png" alt="ESCOA 로고">
+      ESCOA
+    </a>
+    <nav class="gnb-menu">
+      <a href="brand.html">BRAND</a>
+      <a href="shop.html" class="active">SHOP</a>
+      <a href="event.html">EVENT</a>
+      <a href="community.html">COMMUNITY</a>
+      <a href="cs.html">CUSTOMER CENTER</a>
+      <a href="partnership.html">PARTNERSHIP</a>
+    </nav>
+    <div class="gnb-icons">
+      <button aria-label="장바구니" title="장바구니" onclick="location.href='cart.html'">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M3 4h2l2.4 12.4a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.6L21 8H6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="20" r="1.4" fill="currentColor"/><circle cx="17" cy="20" r="1.4" fill="currentColor"/></svg>
+      </button>
+      <button aria-label="마이페이지" title="마이페이지(목업)">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 20c1.4-4 4-6 7.5-6s6.1 2 7.5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <button aria-label="언어 선택" title="언어 선택" data-lang-btn>
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.3 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.3-3.6-8.5s1.2-6.2 3.6-8.5Z" stroke="currentColor" stroke-width="1.4"/></svg>
+      </button>
+      <div class="lang-dropdown">
+        <div class="row"><span class="name">한국어</span><span class="code">ko-KR</span><span class="region">대한민국</span></div>
+        <div class="row"><span class="name">English</span><span class="code">en-US</span><span class="region">글로벌</span></div>
+        <div class="row"><span class="name">简体中文</span><span class="code">zh-CN</span><span class="region">중국 본토</span></div>
+        <div class="row"><span class="name">繁體中文</span><span class="code">zh-TW</span><span class="region">대만</span></div>
+        <div class="row"><span class="name">繁體中文</span><span class="code">zh-HK</span><span class="region">홍콩</span></div>
+      </div>
+    </div>
+    <button class="hamburger" aria-label="메뉴 열기">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <nav class="mobile-menu">
+    <a href="brand.html">BRAND</a>
+    <a href="shop.html">SHOP</a>
+    <a href="event.html">EVENT</a>
+    <a href="community.html">COMMUNITY</a>
+    <a href="cs.html">CUSTOMER CENTER</a>
+    <a href="partnership.html">PARTNERSHIP</a>
+  </nav>
+</header>
+
+<div class="shop-header">
+  <div class="breadcrumb"><span>홈</span><span class="sep">›</span><span class="current">SHOP</span></div>
+  <div class="shop-title-row">
+    <h1>전체 상품</h1>
+    <span class="count">(확인 필요: 실제 상품 수 연동 전 목업 값) 9개</span>
+  </div>
+  <div class="shop-filter-row">
+    <div class="filter-pills">
+      <span class="pill active">전체</span>
+      <span class="pill">First 100</span>
+      <span class="pill">Bon</span>
+      <span class="pill">Petit</span>
+      <span class="pill">Grand</span>
+    </div>
+    <div class="sort-select">인기순 <span>⌄</span></div>
+  </div>
+</div>
+
+<div class="shop-grid-wrap">
+  <div class="shop-grid" id="shop-grid"></div>
+</div>
+
+<div class="pagination">
+  <button aria-label="이전 페이지">‹</button>
+  <button class="active">1</button>
+  <button>2</button>
+  <button>3</button>
+  <button aria-label="다음 페이지">›</button>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-top">
+    <div>
+      <div class="footer-logo">ESCOA</div>
+      <p>성장의 모든 순간, 끊기지 않는 케어</p>
+    </div>
+    <div class="footer-nav">
+      <div class="footer-col"><span class="h">BRAND</span><a href="brand.html">브랜드 스토리</a><a href="brand.html">성분 철학</a><a href="brand.html">인증 히스토리</a></div>
+      <div class="footer-col"><span class="h">SHOP</span><a href="shop.html">전체 상품</a><a href="shop.html">베스트</a><a href="shop.html">New</a></div>
+      <div class="footer-col"><span class="h">CUSTOMER CENTER</span><a href="cs.html">자주 묻는 질문</a><a href="cs.html">1:1 문의</a><a href="cs.html">배송·교환·환불</a></div>
+    </div>
+  </div>
+  <div class="footer-divider"></div>
+  <div class="footer-bottom">
+    <div class="legal">
+      <p>상호명 : (주)씨에스씨 ESCOA · 대표 : 김OO · 사업자등록번호 : 000-00-00000 · 통신판매업신고 : 제0000-서울OO-00000호</p>
+      <p>주소 : 서울특별시 OO구 OO로 00, 0층 · 고객센터 : 1544-0000 (평일 09:00~18:00) · 이메일 : cs@escoa.co.kr</p>
+    </div>
+    <p>© 2026 CSC ESCOA. All rights reserved. · <a class="footer-admin-link" href="admin.html">관리자</a></p>
+  </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+<script>
+  // 9개 상품 카드 렌더링 (Figma "PC Shop" 목업 데이터)
+  var PRODUCTS = [
+    { img: 'assets/img/product-card-1.png', name: '본 베이비 힙 클린 타월', tag: 'Bon' },
+    { img: 'assets/img/product-card-2.png', name: '본 베이비 힙 클린 미스트', tag: 'Bon' },
+    { img: 'assets/img/product-card-3.png', name: '본 베이비 힙 소프트 베일 크림', tag: 'Bon' },
+    { img: 'assets/img/product-card-4.png', name: '상품 자리표시자 (확인 필요)', tag: 'Bon' },
+    { img: 'assets/img/product-card-5.png', name: '상품 자리표시자 (확인 필요)', tag: 'Bon' },
+    { img: 'assets/img/product-card-6.png', name: '상품 자리표시자 (확인 필요)', tag: 'Bon' },
+    { img: 'assets/img/product-card-7.png', name: '상품 자리표시자 (확인 필요)', tag: 'Bon' },
+    { img: 'assets/img/product-card-8.png', name: '상품 자리표시자 (확인 필요)', tag: 'Bon' },
+    { img: 'assets/img/product-card-9.png', name: '상품 자리표시자 (확인 필요)', tag: 'Bon' }
+  ];
+  var grid = document.getElementById('shop-grid');
+  grid.innerHTML = PRODUCTS.map(function (p) {
+    return '' +
+      '<div class="shop-card">' +
+      '  <div class="thumb"><img src="' + p.img + '" alt="' + p.name + '"><span class="badge">' + p.tag + '</span></div>' +
+      '  <div class="name">' + p.name + '</div>' +
+      '  <div class="rating"><span class="stars">★★★★★</span><span class="cnt">4.8 (128) (확인 필요: 목업)</span></div>' +
+      '  <div class="price-row"><span class="old">₩22,000</span><span class="pill-sale">10%</span><span class="new">₩19,800</span></div>' +
+      '  <span class="stock">재고있음</span>' +
+      '  <a class="btn-add-cart" href="cart.html">장바구니 담기</a>' +
+      '</div>';
+  }).join('');
+</script>
+</body>
+</html>

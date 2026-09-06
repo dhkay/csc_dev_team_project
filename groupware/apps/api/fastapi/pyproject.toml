@@ -1,0 +1,14 @@
+# uv 워크스페이스 루트 (가상 루트: 자체 패키지는 없음).
+# FastAPI 앱들과 공유 패키지(csc-net-utils)를 한 락파일/한 venv 로 묶어 코드 공유를 가능하게 한다.
+# 각 앱 Docker 빌드 컨텍스트 = 이 디렉터리(apps/api/fastapi).
+[tool.uv.workspace]
+members = [
+    "net-utils",
+    "log-contracts",
+    "video-model",
+    "file-upload",
+    "language-model",
+    "metrics-agent",
+    "data-collector",
+    "log-server",
+]

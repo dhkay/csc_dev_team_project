@@ -1,0 +1,1 @@
+ALTER TABLE "marketing_video_projects" ADD COLUMN "error_code" varchar(40);

@@ -1,0 +1,22 @@
+{
+  "name": "@csc/mes-contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "files": ["dist", "fixtures"],
+  "exports": {
+    ".": {
+      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+    },
+    "./fixtures/*": "./fixtures/*"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.0"
+  }
+}

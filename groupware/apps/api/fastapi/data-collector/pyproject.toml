@@ -1,0 +1,37 @@
+[project]
+name = "data-collector"
+version = "0.0.0"
+description = "외부 데이터 수집 서버. 실사용 표면(데이터랩 쇼핑인사이트 인기검색어)과 검증 표면(/lab)을 한 프로세스에서 낸다. FastAPI 헥사고날, arq 워커/크론, uv 관리."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "sqlalchemy>=2.0",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
+    "arq>=0.26",
+    "httpx>=0.27",                 # /lab 외부 API 호출(벤더 인증은 어댑터가 직접 채운다)
+    "csc-net-utils",               # 서버 간 토큰/미들웨어 공유(워크스페이스)
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.uv.sources]
+csc-net-utils = { workspace = true }
+
+# uv 로 관리: `uv add <pkg>` / `uv sync` / `uv run uvicorn app.main:app --reload` /
+#   워커: `uv run arq app.worker.WorkerSettings`.
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# 앱 소스는 __init__.py 없이 PEP 420 네임스페이스 패키지로 둔다(빈 마커 제거). pytest 가 이를 인식하고
+# full-path 로 import 하도록 아래 3줄이 필요하다. pythonpath="." 로 app 을 네임스페이스 패키지로 import.
+consider_namespace_packages = true
+addopts = "--import-mode=importlib"
+pythonpath = ["."]

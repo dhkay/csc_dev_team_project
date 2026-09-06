@@ -1,0 +1,37 @@
+[project]
+name = "file-upload"
+version = "0.0.0"
+description = "파일 업로드 / 오브젝트 스토리지 API: FastAPI 헥사고날 (로컬 파일시스템 1차 스토리지, FFmpeg 없음, arq 수거 크론, uv 관리)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "sqlalchemy>=2.0",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
+    "csc-net-utils",  # 서버 간 토큰/미들웨어 공유 (워크스페이스). 아웃바운드 HTTP 없음 → [http] 미사용
+    "arq>=0.26",      # 확정되지 않은 자산 수거 크론(워커). 큐로 받는 잡은 없다(크론 전용)
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.uv.sources]
+csc-net-utils = { workspace = true }
+
+# uv 로 관리: `uv add <pkg>` / `uv sync` / `uv run uvicorn app.main:app --reload`
+# 락파일(uv.lock)은 `uv sync` 가 생성한다. 영상 처리/FFmpeg 의존성은 두지 않는다(video-model 책임).
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# 앱 소스는 __init__.py 없이 PEP 420 네임스페이스 패키지로 둔다(빈 마커 제거). pytest 가 이를 인식하고
+# full-path 로 import 하도록 아래 3줄이 필요하다. pythonpath="." 로 app 을 네임스페이스 패키지로 import.
+consider_namespace_packages = true
+addopts = "--import-mode=importlib"
+pythonpath = ["."]

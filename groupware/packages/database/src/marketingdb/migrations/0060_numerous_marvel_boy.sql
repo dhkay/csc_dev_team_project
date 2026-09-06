@@ -1,0 +1,1 @@
+ALTER TABLE "marketing_saved_plans" ADD COLUMN "video_model" varchar(100) DEFAULT '' NOT NULL;
